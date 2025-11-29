@@ -1,0 +1,14 @@
+- name: external_communication_agent
+  description: Handles external searches and communications, including web searches
+    and email messaging via Gmail
+  tools:
+  - search
+  - gmail_generate_auth_url
+  - gmail_check_auth_status
+  - list_messages
+  - read_message
+  - send_email
+  - send_email_with_attachment
+  - search_messages
+  - list_attachments
+  - download_attachment 

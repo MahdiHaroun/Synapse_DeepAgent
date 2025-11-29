@@ -1,0 +1,9 @@
+- name: database_performance_agent
+  description: Manages query optimization and performance analysis, including query
+    execution plans, index recommendations, and identifying slow queries
+  tools:
+  - explain_query
+  - analyze_query_indexes
+  - get_top_queries
+
+

@@ -1,0 +1,8 @@
+- name: database_explorer_agent
+  description: Handles database inspection and exploration tasks, including listing
+    schemas, objects, and examining object details
+  tools:
+  - list_schemas
+  - list_objects
+  - get_object_details
+  - execute_sql

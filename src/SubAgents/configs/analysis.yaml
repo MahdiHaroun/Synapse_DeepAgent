@@ -1,0 +1,13 @@
+- name: analysis_agent
+  description: Handles Analysis operations
+  tools:
+  - create_bar_chart
+  - create_pie_chart
+  - create_line_chart
+  - create_scatter_chart
+  - create_histogram
+  - create_box_plot
+  - create_heatmap
+  - forecast_prophet
+
+

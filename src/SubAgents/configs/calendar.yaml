@@ -1,0 +1,9 @@
+- name: calendar_agent
+  description: Handles calendar operations
+  tools:
+  - generate_auth_url
+  - check_auth_status
+  - revoke_access
+  - list_calendar_events
+  - add_calendar_event
+  - delete_calendar_event

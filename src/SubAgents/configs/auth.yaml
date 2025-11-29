@@ -1,0 +1,9 @@
+- name: auth_agent
+  description: Handles authentication processes for various services
+  tools:
+  - send_otp
+  - verify_otp
+  - clear_all_otps
+
+
+  

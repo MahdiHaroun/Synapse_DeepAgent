@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "url": "http://localhost:8000/sse",
+      "transport": "sse"
+    },
+    "aws-s3": {
+      "url": "http://localhost:3000/sse",
+      "transport": "sse"
+    },
+    "google-calendar": {
+      "url": "http://localhost:3030/sse",
+      "transport": "sse"
+    },
+    "analysis-tools": {
+      "url": "http://localhost:3040/sse",
+      "transport": "sse"
+    },
+    "google-gmail": {
+      "url": "http://localhost:3050/sse",
+      "transport": "sse"
+    },
+    "auth": {
+      "url": "http://localhost:3060/sse",
+      "transport": "sse"
+    }
+  }
+}
