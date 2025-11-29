@@ -14,7 +14,7 @@ from langgraph.types import Command
 
 from src.Prompts.prompts import WRITE_TODOS_DESCRIPTION
 from src.States.state import DeepAgentState, Todo
-
+import datetime 
 
 @tool(description=WRITE_TODOS_DESCRIPTION,parse_docstring=True)
 def write_todos(todos: list[Todo], tool_call_id: Annotated[str, InjectedToolCallId] ) -> Command:
@@ -66,3 +66,15 @@ def read_todos(
         result += f"{i}. {emoji} {todo['content']} ({todo['status']})\n"
 
     return result.strip()
+
+
+@tool
+def get_current_datetime() -> str:
+    """Get the current date and time in UTC.
+
+    Returns:
+        Current date and time as a formatted string.
+    """
+
+    return datetime.datetime.now().strftime("%Y-%m-%d")
+

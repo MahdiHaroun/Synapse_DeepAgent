@@ -1,13 +1,13 @@
 import asyncio
-import datetime
 from src.SubAgents.subAgents import task_tool 
 from src.LLMs.GroqLLMs.llms import groq_moonshotai_llm 
 from src.States.state import DeepAgentState
-from src.MainAgent.tools.todo_tools import write_todos, read_todos
+from src.MainAgent.tools.todo_tools import write_todos, read_todos , get_current_datetime
 from src.Prompts.prompts import SUBAGENT_USAGE_INSTRUCTIONS , TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS 
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver 
 from langchain.agents.middleware import SummarizationMiddleware 
+import datetime 
 
 class MainAgent: 
     def __init__(self):
@@ -15,7 +15,7 @@ class MainAgent:
     
     async def main_agent_tools(self):
         delegation_tools = [task_tool] 
-        built_in_tools = [write_todos, read_todos] 
+        built_in_tools = [write_todos, read_todos , get_current_datetime] 
         all_tools = delegation_tools + built_in_tools
 
         return all_tools
@@ -24,7 +24,7 @@ class MainAgent:
         SUBAGENT_INSTRUCTIONS = SUBAGENT_USAGE_INSTRUCTIONS.format(
             max_concurrent_research_units=3,
             max_subAgent_iterations=5,
-            date=datetime.datetime.utcnow().strftime("%a %b %-d, %Y"),
+            date=datetime.datetime.now().strftime("%Y-%m-%d")
         )
 
         INSTRUCTIONS = (
@@ -49,7 +49,14 @@ class MainAgent:
             all_tools,
             system_prompt=INSTRUCTIONS,
             state_schema=DeepAgentState,
-            #checkpointer=InMemorySaver()
+            #checkpointer=InMemorySaver(),
+            middleware=[
+                        SummarizationMiddleware(
+                        model=groq_moonshotai_llm,
+                        max_tokens_before_summary=2000,  # Reduced threshold
+                        messages_to_keep=5      
+                    ),
+            ],
         )
 
         return agent
