@@ -8,6 +8,7 @@ from src.MCP.mcp import get_mcp_client
 from src.MainAgent.agent import main_agent
 from pydantic import BaseModel, Field, validator
 from typing import Optional
+from langgraph.types import Command
  
 
 app = FastAPI()
@@ -43,6 +44,11 @@ class ChatResponse(BaseModel):
     thread_id: str = Field(..., description="Thread ID for this conversation")
     timestamp: str = Field(..., description="Response timestamp")
     status: str = Field(default="success", description="Response status")
+
+
+class desegion(BaseModel):
+    a :str 
+    thread_id : str
 
 @app.post("/agent/query")
 async def query_agent(request: QueryRequest):
@@ -125,9 +131,11 @@ async def chat(request: ChatRequest):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to generate response"
             )
+            
         
         
         logger.info(f"Chat completed successfully - Thread: {request.thread_id}")
+        
         
         return ChatResponse(
             response=final_response,
@@ -146,7 +154,43 @@ async def chat(request: ChatRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred: {str(e)}"
         )
-
+@app.post("/contuinue" , response_model=ChatResponse )
+async def continue_chat(request: desegion):
+    try:
+        # Execute the continuation command
+        result = await main_agent.ainvoke(
+            Command( 
+                resume={"decisions": [{"type": request.a}]}  # or "edit", "reject"
+            ), 
+            {"configurable": {"thread_id": request.thread_id}}
+        )
+        
+        # Extract response content from the result
+        response_content = ""
+        if result and "messages" in result:
+            # Get the last message content
+            last_message = result["messages"][-1]
+            if hasattr(last_message, 'content'):
+                response_content = last_message.content
+            else:
+                response_content = str(last_message)
+        else:
+            response_content = f"Action '{request.a}' processed successfully"
+        
+        return ChatResponse(
+            response=response_content,
+            thread_id=request.thread_id,
+            timestamp=datetime.utcnow().isoformat(),
+            status="success"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in continue_chat: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to continue chat: {str(e)}"
+        )
+   
 
 
 if __name__ == "__main__":

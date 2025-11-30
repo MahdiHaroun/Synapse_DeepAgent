@@ -6,7 +6,7 @@ from src.MainAgent.tools.todo_tools import write_todos, read_todos , get_current
 from src.Prompts.prompts import SUBAGENT_USAGE_INSTRUCTIONS , TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS 
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver 
-from langchain.agents.middleware import SummarizationMiddleware 
+from langchain.agents.middleware import SummarizationMiddleware , HumanInTheLoopMiddleware
 import datetime 
 
 class MainAgent: 
@@ -49,14 +49,19 @@ class MainAgent:
             all_tools,
             system_prompt=INSTRUCTIONS,
             state_schema=DeepAgentState,
-            #checkpointer=InMemorySaver(),
+            checkpointer=InMemorySaver(),
             middleware=[
                         SummarizationMiddleware(
                         model=groq_moonshotai_llm,
                         max_tokens_before_summary=2000,  # Reduced threshold
-                        messages_to_keep=5      
+                        messages_to_keep=5 
                     ),
-            ],
+                        HumanInTheLoopMiddleware(
+                        interrupt_on={
+                                    "task": True    # interrupt with default approval
+                                }
+                    )
+                     ],
         )
 
         return agent
