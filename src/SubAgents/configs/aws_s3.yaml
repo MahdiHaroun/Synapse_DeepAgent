@@ -5,3 +5,4 @@
   - list_objects
   - read_object
   - get_object_metadata
+  - generate_presigned_url

@@ -5,6 +5,7 @@ import pandas as pd
 import seaborn as sns
 import os
 from prophet import Prophet
+import boto3 
 
 mcp = FastMCP("analysis-tools" , host="0.0.0.0", port=3040)
 
@@ -269,7 +270,39 @@ def forecast_prophet(data, steps: int = 1):
 
 
 
+@mcp.tool()
+def upload_photo_s3_get_presigned_url(image_path: str,  object_name: str = None) -> str:
+    """
+    Upload a file to an S3 bucket and return the S3 object URL.
 
+    Arguments:
+        file_path (str): Path to the file to upload.
+        bucket_name (str): Name of the S3 bucket.
+        object_name (str): S3 object name. If not specified, file_path's basename is used.
+
+    Returns:
+        str: URL of the uploaded S3 object.
+    """
+    if object_name is None:
+        object_name = os.path.basename(image_path)
+
+    session = boto3.Session()
+    s3 = session.client("s3" , region_name="us-east-1")
+    bucket_name =  "synapse-analysis-photos-container"
+
+    s3.upload_file(image_path, bucket_name, object_name)
+
+    presigned_url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket_name, "Key": object_name},
+        ExpiresIn=3600  
+    )
+    try:
+        os.remove(image_path)
+    except OSError:
+        return "Error deleting local file after upload."
+
+    return presigned_url
 
 if __name__ == "__main__":
     mcp.run(transport="sse")

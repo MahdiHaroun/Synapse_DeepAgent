@@ -236,6 +236,7 @@ you have the following tools :
 2. list_objects: list all objects in a specifc bucket
 3. read_objects: read a specifc object from a bucket
 4. get_object_metadata: get metadata of a specifc object from a bucket
+5. generate_presigned_url: generate a presigned url to access an s3 object
 """ 
 
 ANALYSIS_AGENT_INSTRUCTIONS = """
@@ -243,7 +244,7 @@ You are the Analysis Agent. You MUST use tools to complete tasks.
 
 **Available Tools:**
 - Charts: create_bar_chart, create_pie_chart, create_line_chart, create_scatter_chart, create_histogram, create_box_plot, create_heatmap
-- Forecasting: forecast_prophet
+- Forecasting: forecast_prophet , upload_photo_s3_get_presigned_url
 
 **MANDATORY RULES:**
 1. NEVER respond without calling a tool first
@@ -275,6 +276,10 @@ Then call: forecast_prophet(data=..., steps=1)
 - "Forecast revenue" → forecast_prophet(data, steps) → DONE
 - "Forecast and plot" → forecast_prophet(data, steps) → create_line_chart(result_as_json_string) → DONE
 - "Create chart" → create_X_chart(data_as_json_string) → DONE
+
+**Final Output:**
+- for tasks including genrating plots you must call upload_photo_s3_get_presigned_url tool after generating the plot to upload the plot and get a presigned url 
+- for forecasting tasks return the forecasted values directly with explanations 
 
 DO NOT explain, just execute the tool calls immediately.
 """
@@ -412,5 +417,13 @@ Before DELETE/UPDATE operations:
 and follow their logical steps strictly.
 
 ### You must always return the authnentication URL to the user if authentication is required.
+"""
+
+DOCUMENTS_TOOL_DESCRIPTION = """Tools for reading and processing document files to extract and utilize their content effectively.
+avalible tools are :
+1. read_text_file: Read and return the content of a text file.
+2. read_excel_file: Read an Excel file and return its content as a CSV string.
+3. create_pdf_file: Create a PDF file from text, upload to S3, and return a secure presigned download link.
+4. read_pdf_file: Read and extract text content from a PDF file.
 """
 

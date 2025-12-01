@@ -9,5 +9,6 @@
   - create_box_plot
   - create_heatmap
   - forecast_prophet
+  - upload_photo_s3_get_presigned_url
 
 

@@ -59,7 +59,23 @@ async def get_object_metadata(bucket_name: str, object_key: str):
         return {"error": str(e)}
     
 
+@mcp.tool()
+async def generate_presigned_url(bucket_name: str, object_key: str, expiration: int = 3600):
+    """
+    Generate a presigned URL to access an S3 object.
+    """
+    try:
+        url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket_name, 'Key': object_key},
+            ExpiresIn=expiration
+        )
+        return {"presigned_url": url}
+    except ClientError as e:
+        return {"error": str(e)}
+    
 
+    
 if __name__ == "__main__":
     mcp.run(transport="sse")
 

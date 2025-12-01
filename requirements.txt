@@ -47,4 +47,6 @@ prophet
 psutil
 nest_asyncio
 deepagents
-timezone 
+PyPDF2
+docx
+fpdf

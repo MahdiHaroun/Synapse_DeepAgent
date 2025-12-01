@@ -2,12 +2,18 @@ import asyncio
 from src.SubAgents.subAgents import task_tool 
 from src.LLMs.GroqLLMs.llms import groq_moonshotai_llm 
 from src.States.state import DeepAgentState
-from src.MainAgent.tools.todo_tools import write_todos, read_todos , get_current_datetime
-from src.Prompts.prompts import SUBAGENT_USAGE_INSTRUCTIONS , TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS 
+from src.MainAgent.tools.todo_tools import write_todos, read_todos , get_current_datetime 
+from src.MainAgent.tools.documents_tools import(
+    read_text_file,
+    read_excel_file,
+    create_pdf_file,
+    read_pdf_file
+)
+from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION 
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver 
 from langchain.agents.middleware import SummarizationMiddleware , HumanInTheLoopMiddleware
-import datetime 
+
 
 class MainAgent: 
     def __init__(self):
@@ -15,21 +21,18 @@ class MainAgent:
     
     async def main_agent_tools(self):
         delegation_tools = [task_tool] 
-        built_in_tools = [write_todos, read_todos , get_current_datetime] 
+        built_in_tools = [write_todos, read_todos , get_current_datetime, read_text_file, read_excel_file, create_pdf_file, read_pdf_file] 
         all_tools = delegation_tools + built_in_tools
 
         return all_tools
     
     async def create_instructions(self):
-        SUBAGENT_INSTRUCTIONS = SUBAGENT_USAGE_INSTRUCTIONS.format(
-            max_concurrent_research_units=3,
-            max_subAgent_iterations=5,
-            date=datetime.datetime.now().strftime("%Y-%m-%d")
-        )
 
         INSTRUCTIONS = (
         "# TODO MANAGEMENT\n"
         + TODO_USAGE_INSTRUCTIONS
+        + "\n\n"
+        + DOCUMENTS_TOOL_DESCRIPTION
         + "\n\n"
         + "CRITICAL: You MUST use write_todos tool for ANY user request to create a plan before proceeding.\n"
         + "=" * 80
@@ -56,11 +59,11 @@ class MainAgent:
                         max_tokens_before_summary=2000,  # Reduced threshold
                         messages_to_keep=5 
                     ),
-                        HumanInTheLoopMiddleware(
-                        interrupt_on={
-                                    "task": True    # interrupt with default approval
-                                }
-                    )
+                    # HumanInTheLoopMiddleware(
+                    #     interrupt_on={
+                    #         "task": True    # interrupt with default approval
+                    #     }
+                    # )
                      ],
         )
 
