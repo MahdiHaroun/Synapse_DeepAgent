@@ -7,6 +7,19 @@ from langchain_core.tools import  tool
 
 
 
+@tool 
+async def delete_file(file_location: str) -> str:
+    """Delete a file from the specified directory."""
+    if os.path.exists(file_location):
+        os.remove(file_location)
+        return f"File {file_location} deleted successfully."
+    else:
+        return f"File {file_location} does not exist."
+
+@tool 
+async def check_file_exists(file_location: str) -> bool:
+    """Check if a file exists at the specified location."""
+    return os.path.exists(file_location)
 
 
 @tool

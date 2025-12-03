@@ -75,6 +75,45 @@ async def generate_presigned_url(bucket_name: str, object_key: str, expiration: 
         return {"error": str(e)}
     
 
+@mcp.tool()
+async def download_object(bucket_name: str, object_key: str):
+    """
+    Download an S3 object to a local file.
+    """
+    try:
+        download_path = f"saved_downloads/{object_key.replace('/', '_')}"
+        s3.download_file(bucket_name, object_key, download_path)
+        return {"message": f"Object {object_key} downloaded to {download_path}"}
+    except ClientError as e:
+        return {"error": str(e)}
+    
+
+@mcp.tool()
+async def download_object_by_url(presigned_url: str, download_path: str):
+    """
+    Download an S3 object using a presigned URL to a local file.
+    """
+    import requests
+    try:
+        response = requests.get(presigned_url)
+        response.raise_for_status()
+        with open(download_path, 'wb') as f:
+            f.write(response.content)
+        return {"message": f"Object downloaded to {download_path}"}
+    except requests.RequestException as e:
+        return {"error": str(e)}
+    
+
+@mcp.tool()
+async def upload_object(bucket_name: str, object_key: str, file_path: str):
+    """
+    Upload a local file to an S3 bucket.
+    """
+    try:
+        s3.upload_file(file_path, bucket_name, object_key)
+        return {"message": f"File {file_path} uploaded to {bucket_name}/{object_key}"}
+    except ClientError as e:
+        return {"error": str(e)}
     
 if __name__ == "__main__":
     mcp.run(transport="sse")

@@ -6,3 +6,6 @@
   - read_object
   - get_object_metadata
   - generate_presigned_url
+  - upload_object
+  - download_object
+  - download_object_by_url

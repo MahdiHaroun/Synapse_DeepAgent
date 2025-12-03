@@ -7,7 +7,9 @@ from src.MainAgent.tools.documents_tools import(
     read_text_file,
     read_excel_file,
     create_pdf_file,
-    read_pdf_file
+    read_pdf_file,
+    delete_file,
+    check_file_exists
 )
 from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION 
 from langchain.agents import create_agent
@@ -21,7 +23,7 @@ class MainAgent:
     
     async def main_agent_tools(self):
         delegation_tools = [task_tool] 
-        built_in_tools = [write_todos, read_todos , get_current_datetime, read_text_file, read_excel_file, create_pdf_file, read_pdf_file] 
+        built_in_tools = [write_todos, read_todos , get_current_datetime, read_text_file, read_excel_file, create_pdf_file, read_pdf_file, delete_file, check_file_exists] 
         all_tools = delegation_tools + built_in_tools
 
         return all_tools

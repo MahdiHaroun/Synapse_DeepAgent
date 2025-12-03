@@ -229,7 +229,7 @@ You have full access to Gmail operations:
 """
 AWS_S3_AGENT_INSTRUCTIONS = """
 you manage aws s3 operation including read from files , lsiting buckets and listing objects
-avalible aws s3 buckets are synapse-daily-report-saver for daily reports txt files,synapse-events-saver for any event txt in a specifc data 
+avalible aws s3 buckets are synapse-daily-report-saver for daily reports txt files,synapse-events-saver for any event txt in a specifc data  , synapse-files-container for any file uploads and downloads , synapse-analysis-photos-container for any plot uploads and downloads
 dont help in any other bucket
 you have the following tools :
 1. list_buckets: list all avalible buckets
@@ -413,6 +413,12 @@ Before DELETE/UPDATE operations:
 4. Use static email stored in tool (don't ask user for email)
 
 
+### External Communication Agent 
+1. if user asked after getting a plot response from the analysis to send it by email call AWS s3 agent to download the plot using the presigned url you got from the analysis agent and send it to the user email using the external communication agent 
+2 . **IMPORTANT** after each download operation from aws s3 agent make sure to delete the local file after sending it by email to avoid storage overload
+3. you can check if the file exists before sending it by email using the check_file_exists tool from the main agent
+
+
 ###IMPORTANT: Add these protocols to your todo list and follow them strictly when delegating tasks to sub-agents.
 and follow their logical steps strictly.
 
@@ -425,5 +431,7 @@ avalible tools are :
 2. read_excel_file: Read an Excel file and return its content as a CSV string.
 3. create_pdf_file: Create a PDF file from text, upload to S3, and return a secure presigned download link.
 4. read_pdf_file: Read and extract text content from a PDF file.
+5. delete_file: Delete a file from the specified directory.
+6. check_file_exists: Check if a file exists at the specified location.
 """
 
