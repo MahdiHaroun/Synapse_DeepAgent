@@ -1,5 +1,5 @@
 TODO 
-files
+files  done 
 rag
 Background
 web search

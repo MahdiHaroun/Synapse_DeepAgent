@@ -95,7 +95,7 @@ def _create_task_tool(tools, subagents: list[SubAgent], model, state_schema):
 
         # Execute the sub-agent in isolation (async for MCP tools)
         result = await sub_agent.ainvoke(state)
-        print("Sub-agent result:", result)
+        #print("Sub-agent result:", result)
 
         # Return results to parent agent via Command state update
         return Command(

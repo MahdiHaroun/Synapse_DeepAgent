@@ -50,3 +50,4 @@ deepagents
 PyPDF2
 docx
 fpdf
+odfpy

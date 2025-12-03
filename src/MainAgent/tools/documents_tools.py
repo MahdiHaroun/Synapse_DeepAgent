@@ -10,9 +10,9 @@ from langchain_core.tools import  tool
 
 
 @tool
-async def read_pdf_file(path: str) -> str:
+async def read_pdf_file(temp_file_path: str) -> str:
     """Extract text from a PDF file. Reject if more than 5 pages."""
-    reader = PdfReader(path)
+    reader = PdfReader(temp_file_path)
     num_pages = len(reader.pages)
 
 
@@ -25,23 +25,25 @@ async def read_pdf_file(path: str) -> str:
         if extracted:
             text += extracted + "\n"
 
-    return text
+    return text.strip()
+
+
 
 
 @tool
-async def read_text_file(path: str) -> str:
+async def read_text_file(temp_file_path: str) -> str:
     """Read and return the content of a text file."""
-    with open(path, "r", encoding="utf-8") as f:
+    with open(temp_file_path, "r", encoding="utf-8") as f:
         content = f.read()
     return content
 
 
 @tool
-async def read_excel_file(path: str) -> str:
+async def read_excel_file(temp_file_path: str) -> str:
     """Read an Excel file and return its content as a CSV string."""
     import pandas as pd
 
-    df = pd.read_excel(path)
+    df = pd.read_excel(temp_file_path)
     return df.to_csv(index=False)
 
 
