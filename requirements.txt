@@ -51,3 +51,4 @@ PyPDF2
 docx
 fpdf
 odfpy
+bs4 

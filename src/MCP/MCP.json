@@ -23,6 +23,10 @@
     "auth": {
       "url": "http://localhost:3060/sse",
       "transport": "sse"
+    },
+    "web-search": {
+      "url": "http://localhost:3020/sse",
+      "transport": "sse"
     }
   }
 }

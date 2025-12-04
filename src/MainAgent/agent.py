@@ -14,7 +14,7 @@ from src.MainAgent.tools.documents_tools import(
 from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION 
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver 
-from langchain.agents.middleware import SummarizationMiddleware , HumanInTheLoopMiddleware
+from langchain.agents.middleware import SummarizationMiddleware #, HumanInTheLoopMiddleware
 
 
 class MainAgent: 

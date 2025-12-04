@@ -1,3 +1,4 @@
+import datetime
 import yaml 
 import asyncio
 
@@ -9,6 +10,7 @@ from src.Prompts.prompts import (
     ANALYSIS_AGENT_INSTRUCTIONS,
     CALENDAR_AGENT_INSTRUCTIONS,
     AUTH_AGENT_INSTRUCTIONS,
+    WEB_SEARCH_AGENT_INSTRUCTIONS
 )
 from src.SubAgents.task_tool import _create_task_tool
 from src.MCP.mcp import all_mcp_tools
@@ -132,6 +134,21 @@ class SubAgents:
         }
         return Auth_agent
     
+    async def create_Web_Search_Agent(self):
+        with open("src/SubAgents/configs/web_search.yaml"  ,  "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        tool_names = []
+        if isinstance(config, list) and len(config) > 0:
+            tool_names = config[0].get("tools", [])
+        filtered_web_search_tools = [tool for tool in all_mcp_tools if tool.name in tool_names]
+        Web_Search_agent = {
+            "name": "Web_Search_Agent",
+            "description": "Delegate Web Search tasks to the sub-agent Web_Search. Only give this Agent one Task at the time.",
+            "prompt": WEB_SEARCH_AGENT_INSTRUCTIONS.format(date=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")),
+            "tools": [tool.name for tool in filtered_web_search_tools]  
+        }
+        return Web_Search_agent
+    
 
     
 
@@ -149,12 +166,13 @@ class SubAgents:
         AWS_S3_agent = await self.create_AWS_S3_Agent()
         analysis_agent = await self.create_Analysis_Agent()
         Auth_agent = await self.create_Auth_Agent()
+        Web_Search_agent = await self.create_Web_Search_Agent()
 
         sub_agent_tools = await self.sub_agent_tools()
 
         task_tool = _create_task_tool(
             tools=sub_agent_tools,
-            subagents=[DB_sub_agent , DB_analyzer_agent, EC_agent , AWS_S3_agent , analysis_agent , Calendar_agent, Auth_agent],
+            subagents=[DB_sub_agent , DB_analyzer_agent, EC_agent , AWS_S3_agent , analysis_agent , Calendar_agent, Auth_agent, Web_Search_agent],
             model=groq_moonshotai_llm,
             state_schema=DeepAgentState
         )

@@ -59,14 +59,18 @@ $PYTHON_CMD -m Backend.mcp.analysis_tools_server.server &
 echo "🚀 Starting Auth Server..."
 $PYTHON_CMD -m Backend.mcp.auth_server.server &
 
+echo "Starting Web Search Server..."
+$PYTHON_CMD -m Backend.mcp.web_server.server &
+
 echo ""
 echo "✅ All servers started!"
 echo "📝 Server endpoints:"
 echo "   - Gmail MCP: http://localhost:3050"
-echo "   - AWS S3 MCP: http://localhost:3051" 
-echo "   - Calendar MCP: http://localhost:3052"
+echo "   - AWS S3 MCP: http://localhost:3000" 
+echo "   - Calendar MCP: http://localhost:3030"
 echo "   - Analysis MCP: http://localhost:3040"
-echo "   - Auth MCP: http://localhost:3053"
+echo "   - Auth MCP: http://localhost:3060"
+echo "   - Web Search MCP: http://localhost:3020"
 echo ""
 echo "Press Ctrl+C to stop all servers"
 
