@@ -1,7 +1,6 @@
 from src.LLMs.GroqLLMs.llms import groq_llama3_llm 
-from Synapse_RAG.tools.tools import get_query_results 
+from Synapse_RAG.tools.tools import get_query_results , get_object_id_list
 from langchain.agents import create_agent 
-from langgraph.checkpoint.memory import InMemorySaver 
 
 
 
@@ -12,7 +11,7 @@ class RAGAgent:
         pass
     
     async def rag_agent_tools(self):
-        rag_tools = [get_query_results] 
+        rag_tools = [get_query_results , get_object_id_list ] 
         return rag_tools
     
     async def create_rag_agent(self):
@@ -26,17 +25,29 @@ class RAGAgent:
         "3. Be concise and accurate\n\n"
         "Available collections:\n"
         "- rag_db.test (default): General documents\n\n"
-        "You can specify a different collection using the collection_name parameter if needed."
+        "You can specify a different collection using the collection_name parameter if needed.\n"
+        "Use the tool [get_object_id_list] to get the list of object IDs in a specified collection.\n"
         )
 
         agent = create_agent(
             groq_llama3_llm,
             rag_tools,
             system_prompt=RAG_INSTRUCTIONS,
-            checkpointer=InMemorySaver(),
         )
 
         return agent
+    
+
+
+# Initialize agent synchronously for module-level import
+import asyncio
+try:
+    loop = asyncio.get_event_loop()
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+rag_agent = loop.run_until_complete(RAGAgent().create_rag_agent())
     
 
 

@@ -27,6 +27,10 @@
     "web-search": {
       "url": "http://localhost:3020/sse",
       "transport": "sse"
+    },
+    "rag-service": {
+      "url": "http://localhost:3010/sse",
+      "transport": "sse"
     }
   }
 }

@@ -1,0 +1,10 @@
+- name: rag_service_agent
+  description: Handles RAG system operations
+  tools:
+  - ask_rag_agent
+  - add_new_document
+  - update_document
+  - delete_document
+  - add_document_from_file
+  - create_new_collection
+  - drop_collection

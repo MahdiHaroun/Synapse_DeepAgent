@@ -61,6 +61,8 @@ $PYTHON_CMD -m Backend.mcp.auth_server.server &
 
 echo "Starting Web Search Server..."
 $PYTHON_CMD -m Backend.mcp.web_server.server &
+echo "🚀 Starting RAG Service Server..."
+$PYTHON_CMD -m Backend.mcp.rag_server.server &
 
 echo ""
 echo "✅ All servers started!"
@@ -71,6 +73,7 @@ echo "   - Calendar MCP: http://localhost:3030"
 echo "   - Analysis MCP: http://localhost:3040"
 echo "   - Auth MCP: http://localhost:3060"
 echo "   - Web Search MCP: http://localhost:3020"
+echo "   - RAG Service MCP: http://localhost:3010"
 echo ""
 echo "Press Ctrl+C to stop all servers"
 

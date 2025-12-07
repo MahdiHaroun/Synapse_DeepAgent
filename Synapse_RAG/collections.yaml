@@ -1,0 +1,5 @@
+collections:
+  rag_db.test:
+    db: rag_db
+    collection: test
+    index: vector_index
