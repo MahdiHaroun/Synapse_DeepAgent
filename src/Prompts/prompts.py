@@ -441,6 +441,10 @@ Your Action: Call RAG_Agent_As_Tool("Add document from /tmp/thread_abc/document.
 DO NOT: Read, parse, open, or process the file in any way
 
 ### You must always return the authnentication URL to the user if authentication is required.
+
+for update or delete operations you must always use the Auth_Agent to verify the user before proceeding with the operation.
+
+if you giving a image path , use analyze_image tool from the image analysis tools to analyze the image and give a description about it.
 """
 
 DOCUMENTS_TOOL_DESCRIPTION = """Tools for reading and processing document files to extract and utilize their content effectively.
@@ -451,6 +455,13 @@ avalible tools are :
 4. read_pdf_file: Read and extract text content from a PDF file.
 5. delete_file: Delete a file from the specified directory.
 6. check_file_exists: Check if a file exists at the specified location.
+"""
+
+IMAGE_ANALYSIS_TOOL_DESCRIPTION = """Tools for analyzing images to extract meaningful information and insights.
+Available tools are:
+1. analyze_image: Analyze an image and return a description of its content.
+
+you must always use the check_file_exists tool from the main agent to check if the image file exists before calling the analyze_image tool.and send the correct path of the image to the analyze_image tool.
 """
 
 WEB_SEARCH_AGENT_INSTRUCTIONS = """

@@ -61,17 +61,26 @@ async def read_excel_file(temp_file_path: str) -> str:
 
 
 @tool
-async def create_pdf_file(content: str):
+async def create_pdf_file(content: str, image_paths: list = None) -> dict:
     """
-    Create a PDF file from text, upload to S3, and return a secure presigned download link.
+    Create a PDF file from text + multiple images, upload to S3, 
+    and return a secure presigned download link.
     """
 
-
-    # Create PDF
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.set_font("Arial", size=12)
+
+    if image_paths:
+        for img in image_paths:
+            if img and os.path.exists(img):
+                # Auto-fit width (A4 width = 210mm, so we use 180mm)
+                pdf.image(img, x=10, w=180)
+                pdf.ln(85)  # move cursor down for next image
+
+        pdf.ln(5)  # small gap before text
+
 
     for line in content.split("\n"):
         pdf.multi_cell(0, 10, line)
@@ -79,22 +88,17 @@ async def create_pdf_file(content: str):
     file_key = f"{uuid4().hex}.pdf"
     pdf.output(file_key)
 
-    # S3 bucket
+
     bucket = "synapse-files-container"
-    if not bucket:
-        raise ValueError("AWS_S3_BUCKET_NAME is not set")
-
     session = boto3.Session()
-    s3 = session.client("s3" , region_name="us-east-1")
+    s3 = session.client("s3", region_name="us-east-1")
 
-    # Upload file (private)
     s3.upload_file(file_key, bucket, file_key)
 
-    # Generate presigned URL
     presigned_url = s3.generate_presigned_url(
         "get_object",
         Params={"Bucket": bucket, "Key": file_key},
-        ExpiresIn=3600  # expires in 1 hour
+        ExpiresIn=3600
     )
 
     # Cleanup
@@ -103,5 +107,5 @@ async def create_pdf_file(content: str):
     return {
         "message": "PDF created successfully.",
         "filename": file_key,
-        "download_url": presigned_url
+        "download_url": presigned_url,
     }

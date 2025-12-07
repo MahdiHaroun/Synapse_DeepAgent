@@ -11,7 +11,8 @@ from src.MainAgent.tools.documents_tools import(
     delete_file,
     check_file_exists
 )
-from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION 
+from src.MainAgent.tools.image_analysis import analyze_image
+from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION  , IMAGE_ANALYSIS_TOOL_DESCRIPTION
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver 
 from langchain.agents.middleware import SummarizationMiddleware #, HumanInTheLoopMiddleware
@@ -23,7 +24,7 @@ class MainAgent:
     
     async def main_agent_tools(self):
         delegation_tools = [task_tool] 
-        built_in_tools = [write_todos, read_todos , get_current_datetime, read_text_file, read_excel_file, create_pdf_file, read_pdf_file, delete_file, check_file_exists] 
+        built_in_tools = [write_todos, read_todos , get_current_datetime, read_text_file, read_excel_file, create_pdf_file, read_pdf_file, delete_file, check_file_exists , analyze_image ] 
         all_tools = delegation_tools + built_in_tools
 
         return all_tools
@@ -35,6 +36,8 @@ class MainAgent:
         + TODO_USAGE_INSTRUCTIONS
         + "\n\n"
         + DOCUMENTS_TOOL_DESCRIPTION
+        + "\n\n"
+        + IMAGE_ANALYSIS_TOOL_DESCRIPTION
         + "\n\n"
         + "CRITICAL: You MUST use write_todos tool for ANY user request to create a plan before proceeding.\n"
         + "=" * 80
