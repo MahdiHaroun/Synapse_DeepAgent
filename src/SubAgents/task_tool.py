@@ -5,7 +5,6 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool, InjectedToolCallId, tool
 from langgraph.prebuilt import InjectedState  # updated 1.0
 from langchain.agents import create_agent  # updated 1.0
-
 from langgraph.types import Command
 
 from src.Prompts.prompts import TASK_DESCRIPTION_PREFIX

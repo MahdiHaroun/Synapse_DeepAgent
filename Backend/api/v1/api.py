@@ -147,10 +147,10 @@ async def chat_with_file(
             ):
                 kind = event["event"]
 
-                with open("event.txt", "a") as f:
+                with open("event_new.txt", "w") as f:
                     f.write(str(event) + "\n")
 
-                with open("kind.txt", "a") as f:
+                with open("kind_new .txt", "w") as f:
                     f.write(str(kind) + "\n")
 
 
@@ -215,8 +215,7 @@ async def chat_with_file(
 
         
 
-        print("event = ", event)
-        print("kind = ", kind)
+
     
         return ChatResponse(
                 response=final_response,

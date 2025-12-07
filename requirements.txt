@@ -52,3 +52,9 @@ docx
 fpdf
 odfpy
 bs4 
+langchain-text-splitters
+pymongo
+pypdf
+langchain_mongodb
+langchain
+langchain-aws
