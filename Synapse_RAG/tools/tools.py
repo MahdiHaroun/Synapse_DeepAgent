@@ -207,7 +207,30 @@ async def update_document_in_collection(collection_name: str, object_id: list[st
 
     return f"Document with ID '{object_id}' updated successfully in collection '{collection_name}'."
 
+async def add_query_to_collection(collection_name: str, query: str) -> str:
+    """Add a new query document to the specified MongoDB collection.
 
+    Args:
+        collection_name: The name of the MongoDB collection in format 'database.collection'.
+        query: The query text content to add.
+    Returns:
+        A confirmation message.
+    """
+    # Get collection info
+    if collection_name not in AVAILABLE_COLLECTIONS:
+        return f"Error: Collection '{collection_name}' not available. Available: {list(AVAILABLE_COLLECTIONS.keys())}"
+    
+    coll_info = AVAILABLE_COLLECTIONS[collection_name]
+    collection = client[coll_info["db"]][coll_info["collection"]]
+
+    # Generate embedding for the query
+    query_embedding = get_embeddings(query)
+
+    # Insert query document into the collection
+    doc_to_insert = {"text": query, "embedding": query_embedding}
+    result = collection.insert_one(doc_to_insert)
+
+    return f"Query document added to collection '{collection_name}' successfully with ID '{result.inserted_id}'."
 
 async def delete_document_from_collection(collection_name: str, object_id: list[str]) -> str:
     """Delete a document from the specified MongoDB collection.

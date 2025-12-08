@@ -27,19 +27,19 @@ async def ask_rag_agent(question: str) -> str:
 
 
 @mcp.tool()
-async def add_new_document(collection_name: str, document: str) -> str:
+async def add_new_query(collection_name: str, query: str) -> str:
     """
     Add a new document to the specified MongoDB collection from text content.
 
     Arguments:
         collection_name (str): The name of the MongoDB collection (e.g., 'rag_db.test').
-        document (str): The document text content to add.
-
+        query (str): The query text content to add.
+    
     Returns:
         str: Confirmation message.
     """
-    from Synapse_RAG.tools.tools import add_document_to_collection
-    result = await add_document_to_collection(collection_name, document)
+    from Synapse_RAG.tools.tools import add_query_to_collection
+    result = await add_query_to_collection(collection_name, query)
     return result
 
 

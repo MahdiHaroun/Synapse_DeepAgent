@@ -2,7 +2,7 @@
   description: Handles RAG system operations
   tools:
   - ask_rag_agent
-  - add_new_document
+  - add_new_query
   - update_document
   - delete_document
   - add_document_from_file

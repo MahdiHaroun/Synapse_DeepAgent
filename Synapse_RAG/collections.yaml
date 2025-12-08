@@ -3,3 +3,7 @@ collections:
     db: rag_db
     collection: test
     index: vector_index
+  rag_db.admin_info:
+    db: rag_db
+    collection: admin_info
+    index: admin_vector_index

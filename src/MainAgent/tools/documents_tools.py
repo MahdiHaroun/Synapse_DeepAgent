@@ -63,36 +63,44 @@ async def read_excel_file(temp_file_path: str) -> str:
 @tool
 async def create_pdf_file(content: str, image_paths: list = None) -> dict:
     """
-    Create a PDF file from text + multiple images, upload to S3, 
-    and return a secure presigned download link.
+    Create a UTF-8 PDF file from text + multiple images,
+    upload to S3, and return a secure presigned link.
     """
+
+    from fpdf import FPDF
+    import boto3
+    import os
+    from uuid import uuid4
 
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.set_font("Arial", size=12)
 
+    # Add UTF-8 font
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    if not os.path.exists(font_path):
+        raise FileNotFoundError("Font file DejaVuSans.ttf not found on server.")
+
+    pdf.add_font("DejaVu", "", font_path, uni=True)
+    pdf.set_font("DejaVu", size=12)
+
+    # Add images
     if image_paths:
         for img in image_paths:
             if img and os.path.exists(img):
-                # Auto-fit width (A4 width = 210mm, so we use 180mm)
                 pdf.image(img, x=10, w=180)
-                pdf.ln(85)  # move cursor down for next image
+                pdf.ln(90)
 
-        pdf.ln(5)  # small gap before text
-
+        pdf.ln(5)
 
     for line in content.split("\n"):
-        pdf.multi_cell(0, 10, line)
-
+        pdf.multi_cell(0, 8, line)
     file_key = f"{uuid4().hex}.pdf"
     pdf.output(file_key)
 
-
     bucket = "synapse-files-container"
-    session = boto3.Session()
-    s3 = session.client("s3", region_name="us-east-1")
 
+    s3 = boto3.client("s3", region_name="us-east-1")
     s3.upload_file(file_key, bucket, file_key)
 
     presigned_url = s3.generate_presigned_url(
