@@ -158,8 +158,14 @@ async def chat_with_file(
                 if kind == "on_chat_model_stream":
                     content = event["data"]["chunk"].content
                     if content:
-                        final_response += content
-                        logger.info(f"[AI Stream] {content}")
+                        # Handle both string and list content (ChatBedrock returns list)
+                        if isinstance(content, list):
+                            content_str = "".join(str(item.get("text", item)) if isinstance(item, dict) else str(item) for item in content)
+                        else:
+                            content_str = str(content)
+                        
+                        final_response += content_str
+                        logger.info(f"[AI Stream] {content_str}")
                 
                 
                 elif kind == "on_tool_start":

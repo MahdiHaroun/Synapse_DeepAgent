@@ -1,6 +1,7 @@
 import asyncio
 from src.SubAgents.subAgents import task_tool 
 from src.LLMs.GroqLLMs.llms import groq_moonshotai_llm 
+from src.LLMs.AWS_LLMs.llms import sonnet_4_llm
 from src.States.state import DeepAgentState
 from src.MainAgent.tools.todo_tools import write_todos, read_todos , get_current_datetime 
 from src.MainAgent.tools.documents_tools import(
@@ -9,7 +10,9 @@ from src.MainAgent.tools.documents_tools import(
     create_pdf_file,
     read_pdf_file,
     delete_file,
-    check_file_exists
+    check_file_exists,
+    list_cached_files,
+    get_cached_file
 )
 from src.MainAgent.tools.image_analysis import analyze_image
 from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION  , IMAGE_ANALYSIS_TOOL_DESCRIPTION
@@ -24,7 +27,13 @@ class MainAgent:
     
     async def main_agent_tools(self):
         delegation_tools = [task_tool] 
-        built_in_tools = [write_todos, read_todos , get_current_datetime, read_text_file, read_excel_file, create_pdf_file, read_pdf_file, delete_file, check_file_exists , analyze_image ] 
+        built_in_tools = [
+            write_todos, read_todos, get_current_datetime,
+            read_text_file, read_excel_file, create_pdf_file, read_pdf_file,
+            delete_file, check_file_exists,
+            list_cached_files, get_cached_file,
+            analyze_image
+        ] 
         all_tools = delegation_tools + built_in_tools
 
         return all_tools
@@ -53,7 +62,7 @@ class MainAgent:
         INSTRUCTIONS = await self.create_instructions()
 
         agent = create_agent(
-            groq_moonshotai_llm,
+            sonnet_4_llm,
             all_tools,
             system_prompt=INSTRUCTIONS,
             state_schema=DeepAgentState,

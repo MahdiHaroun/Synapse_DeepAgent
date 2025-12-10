@@ -1,1 +1,1 @@
-on_chain_end
+on_chat_model_start

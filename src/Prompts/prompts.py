@@ -448,20 +448,39 @@ if you giving a image path , use analyze_image tool from the image analysis tool
 """
 
 DOCUMENTS_TOOL_DESCRIPTION = """Tools for reading and processing document files to extract and utilize their content effectively.
-avalible tools are :
-1. read_text_file: Read and return the content of a text file.
-2. read_excel_file: Read an Excel file and return its content as a CSV string.
-3. create_pdf_file: Create a PDF file from text, upload to S3, and return a secure presigned download link.
-4. read_pdf_file: Read and extract text content from a PDF file.
-5. delete_file: Delete a file from the specified directory.
-6. check_file_exists: Check if a file exists at the specified location.
+
+**Available Tools:**
+1. read_text_file: Read text file content (automatically cached for reuse)
+2. read_excel_file: Read Excel file and return as CSV string
+3. create_pdf_file: Create PDF from text, upload to S3, return presigned download link
+4. read_pdf_file: Extract text from PDF (automatically cached for reuse)
+5. delete_file: Delete a file from the specified directory
+6. check_file_exists: Check if a file exists at the specified location
+7. list_cached_files: See all files cached in this conversation
+8. get_cached_file: Retrieve previously cached file content
+
+**CACHING BEHAVIOR:**
+- Files are automatically cached after first read (PDFs, text files, images)
+- Follow-up questions about same file use cached content (instant, no re-reading)
+- User can reference multiple files throughout conversation
+- Use list_cached_files to see what's available
+- Use get_cached_file to retrieve without re-reading from disk
 """
 
 IMAGE_ANALYSIS_TOOL_DESCRIPTION = """Tools for analyzing images to extract meaningful information and insights.
-Available tools are:
-1. analyze_image: Analyze an image and return a description of its content.
 
-you must always use the check_file_exists tool from the main agent to check if the image file exists before calling the analyze_image tool.and send the correct path of the image to the analyze_image tool.
+**Available Tool:**
+1. analyze_image: Analyze image and return description (results cached for reuse)
+
+**CACHING BEHAVIOR:**
+- Image analysis results are automatically cached
+- Same question about same image = instant cached response
+- Different questions trigger new analysis
+- Check cache with list_cached_files before re-analyzing
+
+**Usage:**
+- Always use check_file_exists first to verify image path
+- Results cached as: image_analysis_{filename}_{question}
 """
 
 WEB_SEARCH_AGENT_INSTRUCTIONS = """
