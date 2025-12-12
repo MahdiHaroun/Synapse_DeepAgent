@@ -31,6 +31,28 @@ async def list_all_files(state: Annotated[DeepAgentState, InjectedState]) -> dic
 
     return {"files": all_files, "thread_id": thread_id, "total": len(all_files)}
 
+tool()
+async def find_file(thread_id: str, files_name: list = None) -> dict:
+    """Return the file path for each file in `files_name` inside the thread folder."""
+    
+    if not files_name or not isinstance(files_name, list):
+        return {"error": "files_name must be a non-empty list of filenames."}
+
+    folder_path = f"./files_container/{thread_id}/"
+
+    if not os.path.exists(folder_path):
+        return {"error": f"Folder for thread_id {thread_id} does not exist."}
+
+    found_paths = {name: None for name in files_name}  # placeholder for each file
+
+    for root, _, files in os.walk(folder_path):
+        for name in files_name:
+            if name in files and found_paths[name] is None:
+                found_paths[name] = os.path.abspath(os.path.join(root, name))
+
+    return {"paths": found_paths}
+
+
 
 @tool()
 async def create_pdf_file(thread_id : str , content: str, image_paths: list = None) -> dict:
