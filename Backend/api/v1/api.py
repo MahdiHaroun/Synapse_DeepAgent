@@ -140,7 +140,10 @@ async def chat_with_file(
         try:
             final_response = ""
             async for event in main_agent.astream_events(
-                {"messages": [{"role": "user", "content": user_message}]},
+                {
+                    "messages": [{"role": "user", "content": user_message}],
+                    "thread_id": thread_id  # Pass thread_id in state
+                },
                 config={"configurable": {"thread_id": thread_id}},
                 version="v2",
                 stream_mode="updates"

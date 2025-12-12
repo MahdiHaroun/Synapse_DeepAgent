@@ -246,6 +246,12 @@ You are the Analysis Agent. You MUST use tools to complete tasks.
 - Charts: create_bar_chart, create_pie_chart, create_line_chart, create_scatter_chart, create_histogram, create_box_plot, create_heatmap
 - Forecasting: forecast_prophet , upload_photo_s3_get_presigned_url
 
+**CRITICAL - Thread ID Parameter:**
+- EVERY chart/analysis tool call REQUIRES thread_id as the FIRST parameter
+- Extract thread_id from the task description (look for "Conversation Thread ID: XXX")
+- If no thread_id is provided, revooke the task 
+- Example: create_bar_chart(thread_id="abc123", data="...", x_col="...", y_col="...", title="...")
+
 **MANDATORY RULES:**
 1. NEVER respond without calling a tool first
 2. For ANY forecast/prediction/trend request → ALWAYS call forecast_prophet
@@ -278,7 +284,6 @@ Then call: forecast_prophet(data=..., steps=1)
 - "Create chart" → create_X_chart(data_as_json_string) → DONE
 
 **Final Output:**
-- for tasks including genrating plots you must call upload_photo_s3_get_presigned_url tool after generating the plot to upload the plot and get a presigned url 
 - for forecasting tasks return the forecasted values directly with explanations 
 
 DO NOT explain, just execute the tool calls immediately.
@@ -454,8 +459,7 @@ DOCUMENTS_TOOL_DESCRIPTION = """Tools for reading and processing document files 
 2. read_excel_file: Read Excel file and return as CSV string
 3. create_pdf_file: Create PDF from text, upload to S3, return presigned download link
 4. read_pdf_file: Extract text from PDF (automatically cached for reuse)
-5. delete_file: Delete a file from the specified directory
-6. check_file_exists: Check if a file exists at the specified location
+5. list_all_files: List all files available in the files container 
 7. list_cached_files: See all files cached in this conversation
 8. get_cached_file: Retrieve previously cached file content
 

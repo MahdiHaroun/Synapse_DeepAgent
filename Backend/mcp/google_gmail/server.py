@@ -102,6 +102,7 @@ async def get_valid_token(email: str):
     
     return None
 
+
 @mcp.tool()
 async def gmail_generate_auth_url(email: str = DEFAULT_USER_EMAIL):
     """

@@ -6,22 +6,93 @@ from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from typing import Annotated
 from src.States.state import DeepAgentState
+import boto3
 
 
 
-@tool 
-async def delete_file(file_location: str) -> str:
-    """Delete a file from the specified directory."""
-    if os.path.exists(file_location):
-        os.remove(file_location)
-        return f"File {file_location} deleted successfully."
-    else:
-        return f"File {file_location} does not exist."
 
-@tool 
-async def check_file_exists(file_location: str) -> bool:
-    """Check if a file exists at the specified location."""
-    return os.path.exists(file_location)
+@tool()
+async def list_all_files(state: Annotated[DeepAgentState, InjectedState]) -> dict:
+    """List all file names inside the thread folder (recursive). Automatically uses the current conversation's thread_id."""
+
+    thread_id = state.get("thread_id", "default_thread")
+    folder_path = f"./files_container/{thread_id}/"
+
+    if not os.path.exists(folder_path):
+        return {"error": f"Folder for thread_id {thread_id} does not exist.", "thread_id": thread_id}
+
+    all_files = []
+
+    for root, _, files in os.walk(folder_path):
+        for file_name in files:
+            # Get full relative path from thread folder
+            rel_path = os.path.relpath(os.path.join(root, file_name), folder_path)
+            all_files.append(rel_path)
+
+    return {"files": all_files, "thread_id": thread_id, "total": len(all_files)}
+
+
+@tool()
+async def create_pdf_file(thread_id : str , content: str, image_paths: list = None) -> dict:
+    """
+    Create a UTF-8 PDF file from text + multiple images,
+    upload to S3, and return a secure presigned link.
+    """
+
+    from fpdf import FPDF
+    import os
+    from uuid import uuid4
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    # Add UTF-8 font
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    if not os.path.exists(font_path):
+        raise FileNotFoundError("Font file DejaVuSans.ttf not found on server.")
+
+    pdf.add_font("DejaVu", "", font_path, uni=True)
+    pdf.set_font("DejaVu", size=12)
+
+    # Add images
+    if image_paths:
+        for img in image_paths:
+            if img and os.path.exists(img):
+                pdf.image(img, x=10, w=180)
+                pdf.ln(90)
+
+        pdf.ln(5)
+
+    for line in content.split("\n"):
+        pdf.multi_cell(0, 8, line)
+    file_key = f"{uuid4().hex}.pdf"
+    
+
+    save_path = f"./files_container/{thread_id}/"
+    os.makedirs(save_path, exist_ok=True)
+
+    pdf.output(os.path.join(save_path, file_key))
+
+
+
+    bucket = "synapse-openapi-schemas"
+
+    s3 = boto3.client("s3", region_name="eu-central-1")
+    s3.upload_file(os.path.join(save_path, file_key), bucket, file_key)
+
+    presigned_url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket, "Key": file_key},
+        ExpiresIn=3600
+    )
+
+
+
+    return {
+    "presigned_url": presigned_url
+}
+
 
 
 @tool
@@ -158,60 +229,3 @@ async def read_excel_file(
     )
 
 
-@tool
-async def create_pdf_file(content: str, image_paths: list = None) -> dict:
-    """
-    Create a UTF-8 PDF file from text + multiple images,
-    upload to S3, and return a secure presigned link.
-    """
-
-    from fpdf import FPDF
-    import boto3
-    import os
-    from uuid import uuid4
-
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-
-    # Add UTF-8 font
-    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    if not os.path.exists(font_path):
-        raise FileNotFoundError("Font file DejaVuSans.ttf not found on server.")
-
-    pdf.add_font("DejaVu", "", font_path, uni=True)
-    pdf.set_font("DejaVu", size=12)
-
-    # Add images
-    if image_paths:
-        for img in image_paths:
-            if img and os.path.exists(img):
-                pdf.image(img, x=10, w=180)
-                pdf.ln(90)
-
-        pdf.ln(5)
-
-    for line in content.split("\n"):
-        pdf.multi_cell(0, 8, line)
-    file_key = f"{uuid4().hex}.pdf"
-    pdf.output(file_key)
-
-    bucket = "synapse-files-container"
-
-    s3 = boto3.client("s3", region_name="us-east-1")
-    s3.upload_file(file_key, bucket, file_key)
-
-    presigned_url = s3.generate_presigned_url(
-        "get_object",
-        Params={"Bucket": bucket, "Key": file_key},
-        ExpiresIn=3600
-    )
-
-    # Cleanup
-    os.remove(file_key)
-
-    return {
-        "message": "PDF created successfully.",
-        "filename": file_key,
-        "download_url": presigned_url,
-    }

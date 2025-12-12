@@ -43,7 +43,9 @@ class DeepAgentState(AgentState):
     Inherits from LangGraph's AgentState and adds:
     - todos: List of Todo items for task planning and progress tracking
     - files: Virtual file system stored as dict mapping filenames to content
+    - thread_id: Conversation thread identifier for multi-turn conversations
     """
 
     todos: NotRequired[list[Todo]]
     files: Annotated[NotRequired[dict[str, str]], file_reducer]
+    thread_id: NotRequired[str]  # To track conversation threads

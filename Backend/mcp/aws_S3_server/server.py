@@ -1,11 +1,37 @@
 from mcp.server.fastmcp import FastMCP
 import boto3
 from botocore.exceptions import ClientError
+import os
 
 mcp = FastMCP("S3" , host="0.0.0.0", port=3000)
 
 
 s3 = boto3.client("s3")
+
+
+
+@mcp.tool()
+async def find_file(thread_id: str, files_name: list = None) -> dict:
+    """Return the file path for each file in `files_name` inside the thread folder."""
+    
+    if not files_name or not isinstance(files_name, list):
+        return {"error": "files_name must be a non-empty list of filenames."}
+
+    folder_path = f"./files_container/{thread_id}/"
+
+    if not os.path.exists(folder_path):
+        return {"error": f"Folder for thread_id {thread_id} does not exist."}
+
+    found_paths = {name: None for name in files_name}  # placeholder for each file
+
+    for root, _, files in os.walk(folder_path):
+        for name in files_name:
+            if name in files and found_paths[name] is None:
+                found_paths[name] = os.path.abspath(os.path.join(root, name))
+
+    return {"paths": found_paths}
+
+
 
 @mcp.tool()
 async def list_buckets():
@@ -105,7 +131,7 @@ async def download_object_by_url(presigned_url: str, download_path: str):
     
 
 @mcp.tool()
-async def upload_object(bucket_name: str, object_key: str, file_path: str):
+async def upload_object(thread_id: str, bucket_name: str, object_key: str, file_path: str):
     """
     Upload a local file to an S3 bucket.
     """

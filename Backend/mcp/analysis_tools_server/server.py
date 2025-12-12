@@ -9,9 +9,9 @@ import boto3
 
 mcp = FastMCP("analysis-tools" , host="0.0.0.0", port=3040)
 
-# ------------------------
-# Utility helpers
-# ------------------------
+
+
+
 
 def to_df(data):
     """
@@ -39,25 +39,11 @@ def to_df(data):
         raise ValueError("Unsupported data format. Must be DataFrame, list, dict, or JSON string.")
 
 
-def make_filename(title):
-    """
-    Generate a filesystem-safe filename.
-
-    Arguments:
-        title (str): Chart title to use for filename.
-
-    Returns:
-        str: Absolute path to the image file.
-    """
-    return os.path.abspath(f"{title.replace(' ', '_').lower()}.png")
 
 
-# ------------------------
-# Chart Tools
-# ------------------------
 
 @mcp.tool()
-def create_bar_chart(data: str, x_col: str, y_col: str, title: str) -> str:
+def create_bar_chart(thread_id: str, data: str, x_col: str, y_col: str, title: str) -> dict:
     """
     Create a bar chart from a dataset and save as PNG.
 
@@ -68,20 +54,39 @@ def create_bar_chart(data: str, x_col: str, y_col: str, title: str) -> str:
         title (str): Chart title.
 
     Returns:
-        str: Path to saved PNG image.
+        dict: Dictionary with presigned_url and image_path.
     """
     data = to_df(data)
     plt.figure(figsize=(10, 6))
     sns.barplot(data=data, x=x_col, y=y_col)
     plt.title(title)
-    image_path = make_filename(title)
+    
+    # Create directory if it doesn't exist
+    thread_dir = f"./files_container/{thread_id}"
+    os.makedirs(thread_dir, exist_ok=True)
+    
+    save_path = f"{thread_dir}/{title.replace(' ', '_')}_bar_chart.png"
+    image_path = save_path
     plt.savefig(image_path)
     plt.close()
-    return image_path
+    session = boto3.Session()
+    s3 = session.client("s3" , region_name="eu-central-1")
+    bucket_name =  "synapse-openapi-schemas"
+
+    s3.upload_file(image_path, bucket_name, image_path)
+    presigned_url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket_name, "Key": image_path},
+        ExpiresIn=3600
+    )
+    return {
+        "presigned_url": presigned_url , 
+        "image_path": image_path
+    }
 
 
 @mcp.tool()
-def create_pie_chart(data: str, labels_col: str, values_col: str, title: str) -> str:
+def create_pie_chart(thread_id: str, data: str, labels_col: str, values_col: str, title: str) -> dict:
     """
     Create a pie chart showing category proportions.
 
@@ -92,20 +97,39 @@ def create_pie_chart(data: str, labels_col: str, values_col: str, title: str) ->
         title (str): Chart title.
 
     Returns:
-        str: Path to saved PNG image.
+        dict: Dictionary with presigned_url and image_path.
     """
     data = to_df(data)
     plt.figure(figsize=(8, 8))
     plt.pie(data[values_col], labels=data[labels_col], autopct='%1.1f%%', startangle=140)
     plt.title(title)
-    image_path = make_filename(title)
+    
+    # Create directory if it doesn't exist
+    thread_dir = f"./files_container/{thread_id}"
+    os.makedirs(thread_dir, exist_ok=True)
+    
+    save_path = f"{thread_dir}/{title.replace(' ', '_')}_pie_chart.png"
+    image_path = save_path
     plt.savefig(image_path)
     plt.close()
-    return image_path
+    session = boto3.Session()
+    s3 = session.client("s3" , region_name="eu-central-1")
+    bucket_name =  "synapse-openapi-schemas"
+
+    s3.upload_file(image_path, bucket_name, image_path)
+    presigned_url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket_name, "Key": image_path},
+        ExpiresIn=3600
+    )
+    return {
+        "presigned_url": presigned_url , 
+        "image_path": image_path
+    }
 
 
 @mcp.tool()
-def create_line_chart(data: str, x_col: str, y_col: str, title: str) -> str:
+def create_line_chart(thread_id: str, data: str, x_col: str, y_col: str, title: str) -> dict:
     """
     Create a line chart showing trends over time.
 
@@ -116,20 +140,39 @@ def create_line_chart(data: str, x_col: str, y_col: str, title: str) -> str:
         title (str): Chart title.
 
     Returns:
-        str: Path to saved PNG image.
+        dict: Dictionary with presigned_url and image_path.
     """
     data = to_df(data)
     plt.figure(figsize=(10, 6))
     sns.lineplot(data=data, x=x_col, y=y_col)
     plt.title(title)
-    image_path = make_filename(title)
+    
+    # Create directory if it doesn't exist
+    thread_dir = f"./files_container/{thread_id}"
+    os.makedirs(thread_dir, exist_ok=True)
+    
+    save_path = f"{thread_dir}/{title.replace(' ', '_')}_line_chart.png"
+    image_path = save_path
     plt.savefig(image_path)
     plt.close()
-    return image_path
+    session = boto3.Session()
+    s3 = session.client("s3" , region_name="eu-central-1")
+    bucket_name =  "synapse-openapi-schemas"
+
+    s3.upload_file(image_path, bucket_name, image_path)
+    presigned_url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket_name, "Key": image_path},
+        ExpiresIn=3600
+    )
+    return {
+        "presigned_url": presigned_url ,
+        "image_path": image_path
+    }
 
 
 @mcp.tool()
-def create_scatter_chart(data: str, x_col: str, y_col: str, title: str) -> str:
+def create_scatter_chart(thread_id: str, data: str, x_col: str, y_col: str, title: str) -> dict:
     """
     Create a scatter plot to visualize relationships between variables.
 
@@ -140,20 +183,39 @@ def create_scatter_chart(data: str, x_col: str, y_col: str, title: str) -> str:
         title (str): Chart title.
 
     Returns:
-        str: Path to saved PNG image.
+        dict: Dictionary with presigned_url and image_path.
     """
     data = to_df(data)
     plt.figure(figsize=(10, 6))
     sns.scatterplot(data=data, x=x_col, y=y_col)
     plt.title(title)
-    image_path = make_filename(title)
+    
+    # Create directory if it doesn't exist
+    thread_dir = f"./files_container/{thread_id}"
+    os.makedirs(thread_dir, exist_ok=True)
+    
+    save_path = f"{thread_dir}/{title.replace(' ', '_')}_scatter_chart.png"
+    image_path = save_path
     plt.savefig(image_path)
     plt.close()
-    return image_path
+    session = boto3.Session()
+    s3 = session.client("s3" , region_name="eu-central-1")
+    bucket_name =  "synapse-openapi-schemas"
+
+    s3.upload_file(image_path, bucket_name, image_path)
+    presigned_url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket_name, "Key": image_path},
+        ExpiresIn=3600
+    )
+    return {
+        "presigned_url": presigned_url , 
+        "image_path": image_path
+    }
 
 
 @mcp.tool()
-def create_histogram(data: str, column: str, title: str, bins: int = 10) -> str:
+def create_histogram(thread_id: str, data: str, column: str, title: str, bins: int = 10) -> dict:
     """
     Create a histogram showing the distribution of a column.
 
@@ -164,20 +226,39 @@ def create_histogram(data: str, column: str, title: str, bins: int = 10) -> str:
         bins (int): Number of bins (default=10).
 
     Returns:
-        str: Path to saved PNG image.
+        dict: Dictionary with presigned_url and image_path.
     """
     data = to_df(data)
     plt.figure(figsize=(10, 6))
     sns.histplot(data[column], bins=bins, kde=True)
     plt.title(title)
-    image_path = make_filename(title)
+    
+    # Create directory if it doesn't exist
+    thread_dir = f"./files_container/{thread_id}"
+    os.makedirs(thread_dir, exist_ok=True)
+    
+    save_path = f"{thread_dir}/{title.replace(' ', '_')}_histogram.png"
+    image_path = save_path
     plt.savefig(image_path)
     plt.close()
-    return image_path
+    session = boto3.Session()
+    s3 = session.client("s3" , region_name="eu-central-1")
+    bucket_name =  "synapse-openapi-schemas"
+
+    s3.upload_file(image_path, bucket_name, image_path)
+    presigned_url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket_name, "Key": image_path},
+        ExpiresIn=3600
+    )
+    return {
+        "presigned_url": presigned_url , 
+        "image_path": image_path
+    }
 
 
 @mcp.tool()
-def create_box_plot(data: str, x_col: str, y_col: str, title: str) -> str:
+def create_box_plot(thread_id: str, data: str, x_col: str, y_col: str, title: str) -> dict:
     """
     Create a box plot to visualize spread and outliers.
 
@@ -188,20 +269,41 @@ def create_box_plot(data: str, x_col: str, y_col: str, title: str) -> str:
         title (str): Chart title.
 
     Returns:
-        str: Path to saved PNG image.
+        dict: Dictionary with presigned_url and image_path.
     """
     data = to_df(data)
     plt.figure(figsize=(10, 6))
     sns.boxplot(data=data, x=x_col, y=y_col)
     plt.title(title)
-    image_path = make_filename(title)
+    
+    # Create directory if it doesn't exist
+    thread_dir = f"./files_container/{thread_id}"
+    os.makedirs(thread_dir, exist_ok=True)
+    
+    save_path = f"{thread_dir}/{title.replace(' ', '_')}_box_plot.png"
+    image_path = save_path
     plt.savefig(image_path)
     plt.close()
-    return image_path
+
+    session = boto3.Session()
+    s3 = session.client("s3" , region_name="eu-central-1")
+    bucket_name =  "synapse-openapi-schemas"
+
+    s3.upload_file(image_path, bucket_name, image_path)
+    presigned_url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket_name, "Key": image_path},
+        ExpiresIn=3600
+    )
+
+    return {
+        "presigned_url": presigned_url , 
+        "image_path": image_path
+    }
 
 
 @mcp.tool()
-def create_heatmap(data: str, title: str) -> str:
+def create_heatmap(thread_id: str, data: str, title: str) -> dict:
     """
     Create a heatmap to visualize correlations between numeric columns.
 
@@ -210,16 +312,36 @@ def create_heatmap(data: str, title: str) -> str:
         title (str): Chart title.
 
     Returns:
-        str: Path to saved PNG image.
+        dict: Dictionary with presigned_url and image_path.
     """
     data = to_df(data)
     plt.figure(figsize=(10, 8))
     sns.heatmap(data.corr(), annot=True, fmt=".2f", cmap="coolwarm")
     plt.title(title)
-    image_path = make_filename(title)
+    
+    # Create directory if it doesn't exist
+    thread_dir = f"./files_container/{thread_id}"
+    os.makedirs(thread_dir, exist_ok=True)
+    
+    save_path = f"{thread_dir}/{title.replace(' ', '_')}_heatmap.png"
+    image_path = save_path
     plt.savefig(image_path)
     plt.close()
-    return image_path
+
+    session = boto3.Session()
+    s3 = session.client("s3" , region_name="eu-central-1")
+    bucket_name =  "synapse-openapi-schemas"
+
+    s3.upload_file(image_path, bucket_name, image_path)
+    presigned_url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket_name, "Key": image_path},
+        ExpiresIn=3600
+    ) 
+    return  {
+        "presigned_url": presigned_url , 
+        "image_path": image_path
+    }
 
 
 @mcp.tool()
@@ -270,39 +392,9 @@ def forecast_prophet(data, steps: int = 1):
 
 
 
-@mcp.tool()
-def upload_photo_s3_get_presigned_url(image_path: str,  object_name: str = None) -> str:
-    """
-    Upload a file to an S3 bucket and return the S3 object URL.
 
-    Arguments:
-        file_path (str): Path to the file to upload.
-        bucket_name (str): Name of the S3 bucket.
-        object_name (str): S3 object name. If not specified, file_path's basename is used.
 
-    Returns:
-        str: URL of the uploaded S3 object.
-    """
-    if object_name is None:
-        object_name = os.path.basename(image_path)
-
-    session = boto3.Session()
-    s3 = session.client("s3" , region_name="us-east-1")
-    bucket_name =  "synapse-analysis-photos-container"
-
-    s3.upload_file(image_path, bucket_name, object_name)
-
-    presigned_url = s3.generate_presigned_url(
-        "get_object",
-        Params={"Bucket": bucket_name, "Key": object_name},
-        ExpiresIn=3600  
-    )
-    try:
-        os.remove(image_path)
-    except OSError:
-        return "Error deleting local file after upload."
-
-    return presigned_url
+    
 
 if __name__ == "__main__":
     mcp.run(transport="sse")
