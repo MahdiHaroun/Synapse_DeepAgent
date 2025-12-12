@@ -37,6 +37,11 @@ async def create_pdf_file(thread_id : str , content: str, image_paths: list = No
     """
     Create a UTF-8 PDF file from text + multiple images,
     upload to S3, and return a secure presigned link.
+    
+    Arguments:
+        thread_id: The conversation thread ID
+        content: Text content for the PDF
+        image_paths: List of image file paths (can be full paths or just filenames in thread folder)
     """
 
     from fpdf import FPDF
@@ -55,20 +60,47 @@ async def create_pdf_file(thread_id : str , content: str, image_paths: list = No
     pdf.add_font("DejaVu", "", font_path, uni=True)
     pdf.set_font("DejaVu", size=12)
 
-    # Add images
+    # Add images - try multiple path resolutions
+    images_added = 0
     if image_paths:
+        thread_dir = f"./files_container/{thread_id}"
         for img in image_paths:
-            if img and os.path.exists(img):
-                pdf.image(img, x=10, w=180)
-                pdf.ln(90)
+            if not img:
+                continue
+                
+            # Try different path variations
+            possible_paths = [
+                img,  # Original path
+                os.path.join(thread_dir, img),  # Thread folder + filename
+                os.path.join(thread_dir, os.path.basename(img)),  # Thread folder + basename
+            ]
+            
+            # Find first existing path
+            img_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    img_path = path
+                    break
+            
+            if img_path:
+                try:
+                    pdf.image(img_path, x=10, w=180)
+                    pdf.ln(5)  # Small space after image
+                    images_added += 1
+                except Exception as e:
+                    print(f"Warning: Could not add image {img_path}: {e}")
+            else:
+                print(f"Warning: Image not found at any of: {possible_paths}")
 
-        pdf.ln(5)
+        if images_added > 0:
+            pdf.ln(10)  # Extra space after all images
 
+    # Add text content
     for line in content.split("\n"):
         pdf.multi_cell(0, 8, line)
+    
     file_key = f"{uuid4().hex}.pdf"
     
-
     save_path = f"./files_container/{thread_id}/"
     os.makedirs(save_path, exist_ok=True)
 
