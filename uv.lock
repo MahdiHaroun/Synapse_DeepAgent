@@ -2051,6 +2051,20 @@ wheels = [
 ]
 
 [[package]]
+name = "langgraph-checkpoint-mongodb"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "langchain-mongodb" },
+    { name = "langgraph-checkpoint" },
+    { name = "pymongo" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f2/ed/bf6833305bcd820376a44118f33a146de0e680f656b6c2eb4d644add04be/langgraph_checkpoint_mongodb-0.3.0.tar.gz", hash = "sha256:7b3df56e17c11ecfb7a5ac26fba34f653c5c7eff879659f87b93fecd3642e00a", size = 137487, upload-time = "2025-11-19T16:35:52.852Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/87/56/3e54845b290ab7b8fc2749eb84cf75357835baedc422b16f10d10ccad86e/langgraph_checkpoint_mongodb-0.3.0-py3-none-any.whl", hash = "sha256:1269c08d1544159fcb100b8944f1e8cda520804a622c56925f9f22bc170bcbd6", size = 7823, upload-time = "2025-11-19T16:35:52.048Z" },
+]
+
+[[package]]
 name = "langgraph-cli"
 version = "0.4.7"
 source = { registry = "https://pypi.org/simple" }
@@ -2111,6 +2125,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/cb/0f/88772be3301cc5ad495e77705538edbcbf7f2ccf38d21555fa26131203aa/langgraph_sdk-0.2.10.tar.gz", hash = "sha256:ab58331504fbea28e6322037aa362929799b4e9106663ac1dbd7c5ac44558933", size = 113432, upload-time = "2025-11-24T21:31:57.268Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8b/cc/ff4ba17253d31981b047f4be52cc51a19fa28dd2dd16a880c0c595bd66bd/langgraph_sdk-0.2.10-py3-none-any.whl", hash = "sha256:9aef403663726085de6851e4e50459df9562069bd316dd0261eb359f776fd0ef", size = 58430, upload-time = "2025-11-24T21:31:56.052Z" },
+]
+
+[[package]]
+name = "langgraph-store-mongodb"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "langchain-mongodb" },
+    { name = "langgraph-checkpoint" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/89/1a/5e0cce47316292bbe995f1f4262c3912cf5bf8b21efcf21e4ae162f749e8/langgraph_store_mongodb-0.1.1.tar.gz", hash = "sha256:d779cab36e041cbb0f7cbc25c313eb651e54fce594bcd5ff385e7640629919d2", size = 87488, upload-time = "2025-11-13T02:23:06.196Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d9/d3/b3afe3aa024c8e7517bd21913692ded3600302e8e7c84735a6632a774cd1/langgraph_store_mongodb-0.1.1-py3-none-any.whl", hash = "sha256:7268175e82d3a572a51e30812b02627929ee860528247029a01194f4a0e3da49", size = 9085, upload-time = "2025-11-13T02:23:05.013Z" },
 ]
 
 [[package]]
@@ -4612,7 +4639,9 @@ dependencies = [
     { name = "langchain-text-splitters" },
     { name = "langgraph" },
     { name = "langgraph-api" },
+    { name = "langgraph-checkpoint-mongodb" },
     { name = "langgraph-cli", extra = ["inmem"] },
+    { name = "langgraph-store-mongodb" },
     { name = "matplotlib" },
     { name = "nest-asyncio" },
     { name = "numpy" },
@@ -4673,7 +4702,9 @@ requires-dist = [
     { name = "langchain-text-splitters", specifier = ">=1.0.0" },
     { name = "langgraph", specifier = ">=1.0.4" },
     { name = "langgraph-api", specifier = ">=0.5.27" },
+    { name = "langgraph-checkpoint-mongodb", specifier = ">=0.3.0" },
     { name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.4.7" },
+    { name = "langgraph-store-mongodb", specifier = ">=0.1.1" },
     { name = "matplotlib", specifier = ">=3.10.7" },
     { name = "nest-asyncio", specifier = ">=1.6.0" },
     { name = "numpy", specifier = ">=2.3.5" },

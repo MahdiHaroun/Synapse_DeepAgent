@@ -58,3 +58,5 @@ pypdf
 langchain_mongodb
 langchain
 langchain-aws
+langgraph-checkpoint-mongodb
+langgraph-store-mongodb

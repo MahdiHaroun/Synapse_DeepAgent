@@ -44,7 +44,15 @@ IMPORTANT: Always create a research plan of TODOs and conduct research following
 """
 
 
+MEMORY_TOOL_INSTRUCTIONS = """
+your job is to use these tools at the beggeing of the chat to save user information and get them when needed 
+starat by using tool  get_user_info to get user information if any , you will recive back his name and email , great the user back 
+use email for the other tasks
+like calendar agent and external communication agent , and auth agent
 
+if you didnt find information about the user you need to ask for his name and email and then use the tool save_user_info to save them for future use 
+then greet the user using his name 
+"""
 
 DB_AGENT_INSTRUCTIONS = """
 You are a database exploration assistant helping the user understand, inspect, and query their database efficiently. 

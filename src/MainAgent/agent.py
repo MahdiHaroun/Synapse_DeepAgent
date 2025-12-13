@@ -1,4 +1,6 @@
 import asyncio
+import os
+from pymongo import MongoClient
 from src.SubAgents.subAgents import task_tool 
 from src.LLMs.GroqLLMs.llms import groq_moonshotai_llm , groq_llama3_llm
 from src.LLMs.AWS_LLMs.llms import sonnet_4_llm
@@ -14,20 +16,43 @@ from src.MainAgent.tools.documents_tools import(
     list_all_files
 )
 from src.MainAgent.tools.image_analysis import analyze_image
-from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION  , IMAGE_ANALYSIS_TOOL_DESCRIPTION , TASK_DESCRIPTION_PREFIX 
+from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION  , IMAGE_ANALYSIS_TOOL_DESCRIPTION , TASK_DESCRIPTION_PREFIX , MEMORY_TOOL_INSTRUCTIONS
 from langchain.agents import create_agent
-from langgraph.checkpoint.memory import InMemorySaver 
+#from langgraph.checkpoint.memory import InMemorySaver 
+from langgraph.checkpoint.mongodb import MongoDBSaver
+from langgraph.store.mongodb import MongoDBStore
 from langchain.agents.middleware import SummarizationMiddleware #, HumanInTheLoopMiddleware
+from dotenv import load_dotenv
+from src.MainAgent.tools.memory_tools import (
+    Context,
+    save_user_info,
+    get_user_info
+)
+
 
 
 class MainAgent: 
     def __init__(self):
-        pass
+        load_dotenv("../.env")  # Load environment variables from .env file
+        mongo_uri = os.getenv("MONGODB_URI")
+        self.mongo_client = MongoClient(mongo_uri)
+        self.db = self.mongo_client["Synapse_memory_db"]
+
+        # Short-term / episodic memory
+        self.mongo_memory = MongoDBSaver(
+            self.db,
+            collection_name="agent_checkpoints"
+        )
+
+        # Long-term / semantic store 
+        self.long_term_store = MongoDBStore(
+            collection=self.db["synapse_agent_store"]
+        )
     
     async def main_agent_tools(self):
         delegation_tools = [task_tool] 
         built_in_tools = [
-            write_todos, read_todos, get_current_datetime,
+            write_todos, read_todos, save_user_info, get_user_info, get_current_datetime,
             read_text_file, read_excel_file, create_pdf_file, read_pdf_file,
             list_cached_files, get_cached_file,
             analyze_image , list_all_files
@@ -44,6 +69,9 @@ class MainAgent:
         + "\n\n"
         + "# TOOLS DESCRIPTION\n"
         + TASK_DESCRIPTION_PREFIX.format(other_agents="DB_sub_agent , DB_analyzer_agent, EC_agent , AWS_S3_agent , analysis_agent , Calendar_agent, Auth_agent, Web_Search_agent, RAG_agent")
+        + "\n\n"
+        + MEMORY_TOOL_INSTRUCTIONS
+        + "\n\n"
         + DOCUMENTS_TOOL_DESCRIPTION
         + "\n\n"
         + IMAGE_ANALYSIS_TOOL_DESCRIPTION
@@ -68,7 +96,9 @@ class MainAgent:
             all_tools,
             system_prompt=INSTRUCTIONS,
             state_schema=DeepAgentState,
-            checkpointer=InMemorySaver(),
+            checkpointer=self.mongo_memory,
+            store=self.long_term_store,
+            context_schema=Context ,
             middleware=[
                         SummarizationMiddleware(
                         model=groq_moonshotai_llm,

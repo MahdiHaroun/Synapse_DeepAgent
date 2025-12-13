@@ -11,6 +11,7 @@ from src.MainAgent.agent import main_agent
 from pydantic import BaseModel, Field, validator
 from typing import Optional
 from langgraph.types import Command
+from src.MainAgent.tools.memory_tools import Context
 
 # File cache to store file hashes and paths per thread
 file_cache = {}  # Structure: {thread_id: {file_hash: file_path}}
@@ -80,6 +81,7 @@ async def query_agent(request: QueryRequest):
 async def chat_with_file(
     message: str = Form(...),
     thread_id: str = Form(default=None),
+    user_id: str = Form(default="mahdi"),
     file: UploadFile = File(None)
 ):
     """
@@ -142,9 +144,11 @@ async def chat_with_file(
             async for event in main_agent.astream_events(
                 {
                     "messages": [{"role": "user", "content": user_message}],
-                    "thread_id": thread_id  # Pass thread_id in state
+                    "thread_id": thread_id,  # Pass thread_id in state 
+                    "user_id": user_id
                 },
-                config={"configurable": {"thread_id": thread_id}},
+                config= config,
+                context=Context(user_id=user_id),
                 version="v2",
                 stream_mode="updates"
             ):
