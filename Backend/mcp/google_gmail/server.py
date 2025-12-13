@@ -12,6 +12,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 import mimetypes
+import io
+import boto3
 
 # Load .env from project root
 env_path = Path(__file__).parent.parent.parent.parent / ".env"
@@ -357,77 +359,77 @@ async def send_email(to: str, subject: str, body: str, email: str = DEFAULT_USER
         else:
             return {"error": response.text}
 
+
+
 @mcp.tool()
-async def send_email_with_attachment(to: str, subject: str, body: str, attachment_path: str, email: str = DEFAULT_USER_EMAIL):
+async def send_email_with_attachment(
+    to: str,
+    subject: str,
+    body: str,
+    attachment_s3_key: str,
+    thread_id: str,
+    bucket_name: str = "synapse-openapi-schemas",
+    email: str = DEFAULT_USER_EMAIL
+):
     """
-    Send an email with an attachment via Gmail using simple upload
-    
-    Args:
-        to: Recipient email address
-        subject: Email subject
-        body: Email body (plain text)
-        attachment_path: Full path to the file to attach (e.g., "/tmp/document.pdf")
-        email: Sender's email address (default: mahdiharoun44@gmail.com)
+    Send an email via Gmail with an attachment from S3 (in-memory).
     """
+    # Get OAuth token
     access_token = await get_valid_token(email)
     if not access_token:
         return {"error": f"User {email} not authenticated. Use gmail_generate_auth_url() first"}
-    
-    # Check if file exists
-    if not os.path.exists(attachment_path):
-        return {"error": f"Attachment file not found: {attachment_path}"}
-    
+
+    # Download attachment from S3 in-memory
+    s3 = boto3.client("s3", region_name="eu-central-1")
+    try:
+        attachment_buffer = io.BytesIO()
+        s3.download_fileobj(bucket_name, attachment_s3_key, attachment_buffer)
+        attachment_buffer.seek(0)
+        filename = os.path.basename(attachment_s3_key)
+    except Exception as e:
+        return {"error": f"Failed to download attachment from S3: {str(e)}"}
+
+    # Determine content type
+    content_type, _ = mimetypes.guess_type(filename)
+    if content_type is None:
+        content_type = "application/octet-stream"
+    main_type, sub_type = content_type.split("/", 1)
+
     # Create multipart message
     message = MIMEMultipart()
-    message['to'] = to
-    message['from'] = email
-    message['subject'] = subject
-    
-    # Attach body
-    message.attach(MIMEText(body, 'plain'))
-    
-    # Attach file
+    message["to"] = to
+    message["from"] = email
+    message["subject"] = subject
+    message.attach(MIMEText(body, "plain"))
+
+    # Attach S3 file
     try:
-        filename = os.path.basename(attachment_path)
-        
-        # Guess the content type based on the file extension
-        content_type, _ = mimetypes.guess_type(attachment_path)
-        if content_type is None:
-            content_type = 'application/octet-stream'
-        
-        main_type, sub_type = content_type.split('/', 1)
-        
-        with open(attachment_path, 'rb') as f:
-            attachment_data = f.read()
-            
-        if main_type == 'text':
-            attachment = MIMEText(attachment_data.decode('utf-8'), _subtype=sub_type)
+        if main_type == "text":
+            attachment = MIMEText(attachment_buffer.read().decode("utf-8"), _subtype=sub_type)
         else:
             attachment = MIMEBase(main_type, sub_type)
-            attachment.set_payload(attachment_data)
+            attachment.set_payload(attachment_buffer.read())
             encoders.encode_base64(attachment)
-        
-        attachment.add_header('Content-Disposition', 'attachment', filename=filename)
+        attachment.add_header("Content-Disposition", "attachment", filename=filename)
         message.attach(attachment)
-        
     except Exception as e:
         return {"error": f"Failed to attach file: {str(e)}"}
-    
-    # Convert to RFC822 format
+
+    # Convert to RFC822
     rfc822_message = message.as_bytes()
-    
-    # Use simple upload endpoint
+
+    # Send via Gmail simple upload
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://www.googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=media",
             headers={
                 "Authorization": f"Bearer {access_token}",
                 "Content-Type": "message/rfc822",
-                "Content-Length": str(len(rfc822_message))
+                "Content-Length": str(len(rfc822_message)),
             },
             content=rfc822_message
         )
-        
+
         if response.status_code == 200:
             result = response.json()
             return {
@@ -438,6 +440,7 @@ async def send_email_with_attachment(to: str, subject: str, body: str, attachmen
             }
         else:
             return {"error": f"Failed to send email: {response.status_code} - {response.text}"}
+
 
 @mcp.tool()
 async def search_messages(search_query: str, email: str = DEFAULT_USER_EMAIL, max_results: int = 20):

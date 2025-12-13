@@ -10,55 +10,44 @@ s3 = boto3.client("s3")
 
 
 
-@mcp.tool()
-async def find_file(thread_id: str, files_name: list = None) -> dict:
-    """Return the file path for each file in `files_name` inside the thread folder."""
-    
-    if not files_name or not isinstance(files_name, list):
-        return {"error": "files_name must be a non-empty list of filenames."}
 
-    folder_path = f"./files_container/{thread_id}/"
-
-    if not os.path.exists(folder_path):
-        return {"error": f"Folder for thread_id {thread_id} does not exist."}
-
-    found_paths = {name: None for name in files_name}  # placeholder for each file
-
-    for root, _, files in os.walk(folder_path):
-        for name in files_name:
-            if name in files and found_paths[name] is None:
-                found_paths[name] = os.path.abspath(os.path.join(root, name))
-
-    return {"paths": found_paths}
 
 
 
 @mcp.tool()
-async def list_buckets():
-    """List all S3 buckets"""
+async def list_objects(thread_id: str):
+    """
+    List objects inside bucket_name/thread_id/ and return full S3 keys.
+    """
     try:
-        response = s3.list_buckets()
-        buckets = [bucket['Name'] for bucket in response.get('Buckets', [])]
-        return {"buckets": buckets}
+        prefix = f"{thread_id}/"
+
+        response = s3.list_objects_v2(
+            Bucket= "synapse-openapi-schemas",
+            Prefix=prefix
+        )
+
+        contents = response.get("Contents", [])
+        
+        # Return full S3 keys
+        objects = [obj["Key"] for obj in contents if obj["Key"] != prefix]
+
+        return {
+            "objects": objects,
+            "prefix": prefix
+        }
+
     except ClientError as e:
         return {"error": str(e)}
 
-@mcp.tool()
-async def list_objects(bucket_name: str):
-    """List objects in a specified S3 bucket"""
-    try:
-        response = s3.list_objects_v2(Bucket=bucket_name)
-        contents = response.get('Contents', [])
-        objects = [obj['Key'] for obj in contents] if contents else []
-        return {"objects": objects}
-    except ClientError as e:
-        return {"error": str(e)}
+
 
 @mcp.tool()
-async def read_object(bucket_name: str, object_key: str, decode_utf8: bool = True):
+async def read_object(thread_id: str, bucket_name: str, object_key: str, decode_utf8: bool = True):
     """Get an object from a specified S3 bucket"""
     try:
-        response = s3.get_object(Bucket=bucket_name, Key=object_key)
+        s3_key = f"{thread_id}/{object_key}"
+        response = s3.get_object(Bucket=bucket_name, Key=s3_key)
         data = response['Body'].read()
         content = data.decode('utf-8') if decode_utf8 else data
         return {"content": content}
@@ -67,12 +56,13 @@ async def read_object(bucket_name: str, object_key: str, decode_utf8: bool = Tru
     
 
 @mcp.tool()
-async def get_object_metadata(bucket_name: str, object_key: str):
+async def get_object_metadata(thread_id: str, bucket_name: str, object_key: str):
     """
     Get metadata for an S3 object: last modified, size, content type, custom metadata.
     """
     try:
-        response = s3.head_object(Bucket=bucket_name, Key=object_key)
+        s3_key = f"{thread_id}/{object_key}"
+        response = s3.head_object(Bucket=bucket_name, Key=s3_key)
         metadata = {
             "last_modified": response['LastModified'].isoformat(),
             "size_bytes": response['ContentLength'],
@@ -86,32 +76,58 @@ async def get_object_metadata(bucket_name: str, object_key: str):
     
 
 @mcp.tool()
-async def generate_presigned_url(bucket_name: str, object_key: str, expiration: int = 3600):
+async def generate_presigned_url(thread_id: str, bucket_name: str, object_key: str, expiration: int = 3600):
     """
-    Generate a presigned URL to access an S3 object.
+    Generate a presigned URL for s3://bucket/thread_id/object_key
     """
     try:
+        # Full S3 key inside the thread folder
+        s3_key = f"{thread_id}/{object_key}"
+
         url = s3.generate_presigned_url(
             'get_object',
-            Params={'Bucket': bucket_name, 'Key': object_key},
+            Params={'Bucket': bucket_name, 'Key': s3_key},
             ExpiresIn=expiration
         )
-        return {"presigned_url": url}
+
+        return {
+            "presigned_url": url,
+            "s3_key": s3_key,
+            "expires_in_seconds": expiration
+        }
+
     except ClientError as e:
         return {"error": str(e)}
+
     
 
 @mcp.tool()
-async def download_object(bucket_name: str, object_key: str):
+async def download_object(thread_id: str, bucket_name: str, object_key: str) -> dict:
     """
-    Download an S3 object to a local file.
+    Download an S3 object from bucket_name/thread_id/object_key
+    and save it locally in saved_downloads/.
     """
     try:
-        download_path = f"saved_downloads/{object_key.replace('/', '_')}"
-        s3.download_file(bucket_name, object_key, download_path)
-        return {"message": f"Object {object_key} downloaded to {download_path}"}
+        # Build the full S3 key inside the thread folder
+        s3_key = f"{thread_id}/{object_key}"
+
+        # Ensure local folder exists
+        os.makedirs("saved_downloads", exist_ok=True)
+
+        # Replace slashes for safe local filename
+        download_path = f"saved_downloads/{s3_key.replace('/', '_')}"
+
+        s3.download_file(bucket_name, s3_key, download_path)
+
+        return {
+            "message": f"Downloaded s3://{bucket_name}/{s3_key} to {download_path}",
+            "local_path": download_path,
+            "s3_key": s3_key
+        }
+
     except ClientError as e:
         return {"error": str(e)}
+
     
 
 @mcp.tool()
@@ -130,18 +146,31 @@ async def download_object_by_url(presigned_url: str, download_path: str):
         return {"error": str(e)}
     
 
+
 @mcp.tool()
 async def upload_object(thread_id: str, bucket_name: str, object_key: str, file_path: str):
     """
-    Upload a local file to an S3 bucket.
+    Upload a local file to an S3 bucket under a specific thread_id folder.
+    Resulting path: bucket_name/thread_id/object_key
     """
     try:
-        s3.upload_file(file_path, bucket_name, object_key)
-        return {"message": f"File {file_path} uploaded to {bucket_name}/{object_key}"}
+        # Always upload inside bucket/thread_id/
+        s3_key = f"{thread_id}/{object_key}"
+
+        s3.upload_file(file_path, bucket_name, s3_key)
+
+        return {
+            "message": f"File uploaded to s3://{bucket_name}/{s3_key}",
+            "key": s3_key
+        }
+
     except ClientError as e:
         return {"error": str(e)}
     
+
+
 if __name__ == "__main__":
     mcp.run(transport="sse")
+
 
 

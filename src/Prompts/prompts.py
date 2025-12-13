@@ -181,9 +181,7 @@ Use available tools to access the database directly. Return only the answer, no 
 EXTERNAL_COMMUNICATION_AGENT_INSTRUCTIONS = """
 You manage external communications and information gathering. Your capabilities include:
 
-## Web Search
-- Search the web for information using DuckDuckGo
-- Gather and summarize information from various sources
+
 
 ## Gmail Integration (mahdiharoun44@gmail.com)
 You have full access to Gmail operations:
@@ -229,14 +227,22 @@ You have full access to Gmail operations:
 """
 AWS_S3_AGENT_INSTRUCTIONS = """
 you manage aws s3 operation including read from files , lsiting buckets and listing objects
-avalible aws s3 buckets are synapse-daily-report-saver for daily reports txt files,synapse-events-saver for any event txt in a specifc data  , synapse-files-container for any file uploads and downloads , synapse-analysis-photos-container for any plot uploads and downloads
+avalible aws s3 bucket is synapse-openapi-schemas
+you are only allowed to read and write from and to this bucket 
 dont help in any other bucket
 you have the following tools :
-1. list_buckets: list all avalible buckets
-2. list_objects: list all objects in a specifc bucket
-3. read_objects: read a specifc object from a bucket
-4. get_object_metadata: get metadata of a specifc object from a bucket
-5. generate_presigned_url: generate a presigned url to access an s3 object
+  - list_objects , for listing objects in a specific bucket and specific thread id folder
+  - read_object , for reading an object from a specific bucket and specific thread id folder
+  - get_object_metadata , for getting metadata of an object from a specific bucket and specific thread id folder
+  - generate_presigned_url , for generating presigned url for an object in a specific bucket and specific thread id folder
+  - upload_object , for uploading a local file to a specific bucket and specific thread id folder
+  - download_object , for downloading an object from a specific bucket and specific thread id folder
+  - download_object_by_url , for downloading an object using a presigned url to a local file
+
+**CRITICAL RULES:**
+all tools REQUIRES thread_id you will recive it from the task description (look for "Conversation Thread ID: XXX")
+
+
 """ 
 
 ANALYSIS_AGENT_INSTRUCTIONS = """
@@ -245,6 +251,7 @@ You are the Analysis Agent. You MUST use tools to complete tasks.
 **Available Tools:**
 - Charts: create_bar_chart, create_pie_chart, create_line_chart, create_scatter_chart, create_histogram, create_box_plot, create_heatmap
 - Forecasting: forecast_prophet , upload_photo_s3_get_presigned_url
+
 
 **CRITICAL - Thread ID Parameter:**
 - EVERY chart/analysis tool call REQUIRES thread_id as the FIRST parameter
@@ -359,6 +366,10 @@ Your role is to coordinate work by delegating specific tasks to sub-agents.
 
 
 GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS = """
+
+HERE ARE DETAILED INSTRUCTIONS ABOUT EACH SUB-AGENT AND HOW TO USE THEM EFFECTIVELY: 
+
+
  Calendar_Agent
 **Use for**: Google Calendar operations
 - Creating/viewing/updating calendar events
@@ -396,6 +407,7 @@ Before sending emails:
 2. Validate email format (user@domain.com)
 3. If invalid format → reject and explain proper format
 
+
 ### Calendar Authentication Protocol
 Before calendar operations:
 1. Request email if not provided
@@ -419,9 +431,12 @@ Before DELETE/UPDATE operations:
 
 
 ### External Communication Agent 
-1. if user asked after getting a plot response from the analysis to send it by email call AWS s3 agent to download the plot using the presigned url you got from the analysis agent and send it to the user email using the external communication agent 
-2 . **IMPORTANT** after each download operation from aws s3 agent make sure to delete the local file after sending it by email to avoid storage overload
-3. you can check if the file exists before sending it by email using the check_file_exists tool from the main agent
+1. if user asked after getting a plot response from the analysis to send it by email call AWS s3 agent to get you the s3_key of the plot image
+2. then delegate a request to the external communication agent to send the email with the s3_key
+3. if user asked to send an email to a specific email address , you need to ask for the email address first if not provided
+4. if task requires sending attachment , you need to send the s3_key , delagte a request to aws s3 agent and provide the result 
+to the external communication agent to send the email with attachment
+
 
 ### RAG_Agent 
 **Use for**: RAG system operations
@@ -445,11 +460,23 @@ File Path: /tmp/thread_abc/document.pdf
 Your Action: Call RAG_Agent_As_Tool("Add document from /tmp/thread_abc/document.pdf to collection rag_db.test")
 DO NOT: Read, parse, open, or process the file in any way
 
-### You must always return the authnentication URL to the user if authentication is required.
 
 for update or delete operations you must always use the Auth_Agent to verify the user before proceeding with the operation.
 
 if you giving a image path , use analyze_image tool from the image analysis tools to analyze the image and give a description about it.
+
+
+Attachment Protocol
+When sending emails with attachments:
+1. Always obtain the S3 key of the file to attach using AWS_S3_Agent
+2. Provide the S3 key to External_Communication_Agent for email sending
+
+when sending attachments to pdf_creation tool from the documents tools , always use the AWS_S3_Agent to get the s3_key of the image to attach it to the pdf
+they could be a list of s3 keys , make sure to get all of them using aws s3 agent before proceeding
+
+always ask the aws s3 agent for any s3_keys you need to read from or write to s3 buckets.
+
+
 """
 
 DOCUMENTS_TOOL_DESCRIPTION = """Tools for reading and processing document files to extract and utilize their content effectively.

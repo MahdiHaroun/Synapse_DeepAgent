@@ -1,7 +1,6 @@
 - name: aws_s3_agent
   description: Handles AWS S3 operations
   tools:
-  - list_buckets
   - list_objects
   - read_object
   - get_object_metadata
