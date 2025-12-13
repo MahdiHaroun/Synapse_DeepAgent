@@ -16,7 +16,7 @@ class UserInfo(TypedDict):
 
 
 
-from dataclasses import asdict
+
 
 @tool
 def save_user_info(user_info: dict, runtime: ToolRuntime[Context]) -> str:
@@ -32,7 +32,7 @@ def save_user_info(user_info: dict, runtime: ToolRuntime[Context]) -> str:
         # Store data in the store (namespace, key, data)
         store.put(("users",), user_id, user_info)
         
-        print(f"DEBUG: Successfully called store.put()")
+        print("DEBUG: Successfully called store.put()")
         return "Successfully saved user info."
     except Exception as e:
         print(f"ERROR in save_user_info: {e}")

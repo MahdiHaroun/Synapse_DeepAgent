@@ -6,8 +6,7 @@ import os
 from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.logger import logger
-from src.MCP.mcp import get_mcp_client
-from src.MainAgent.agent import main_agent
+from src.MainAgent.agent import get_main_agent
 from pydantic import BaseModel, Field, validator
 from typing import Optional
 from langgraph.types import Command
@@ -62,20 +61,6 @@ class desegion(BaseModel):
     a :str 
     thread_id : str
 
-@app.post("/agent/query")
-async def query_agent(request: QueryRequest):
-    # Create agent per request (lightweight, uses cached tools/model)
-    agent = main_agent
-    
-    result = await agent.astream_events(
-        {"messages": [{"role": "user", "content": request.query}]},
-        {"configurable": {"thread_id": request.thread_id}}
-    )
-    with open("output.txt", "w") as f:
-        f.write(str(result))
-        
-    
-    return {"result": result}
 
 @app.post("/agent/stream-with-file", response_model=ChatResponse)
 async def chat_with_file(
@@ -140,6 +125,7 @@ async def chat_with_file(
         
         
         try:
+            main_agent = await get_main_agent()
             final_response = ""
             async for event in main_agent.astream_events(
                 {
@@ -261,7 +247,7 @@ async def chat_with_file(
 @app.post("/contuinue" , response_model=ChatResponse )
 async def continue_chat(request: desegion):
     try:
-        
+        main_agent = await get_main_agent()
         result = await main_agent.ainvoke(
             Command( 
                 resume={"decisions": [{"type": request.a}]}  # or "edit", "reject"

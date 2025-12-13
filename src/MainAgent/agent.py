@@ -2,8 +2,8 @@ import asyncio
 import os
 from pymongo import MongoClient
 from src.SubAgents.subAgents import task_tool 
-from src.LLMs.GroqLLMs.llms import groq_moonshotai_llm , groq_llama3_llm
-from src.LLMs.AWS_LLMs.llms import sonnet_4_llm
+from src.LLMs.GroqLLMs.llms import groq_moonshotai_llm 
+#from src.LLMs.AWS_LLMs.llms import sonnet_4_llm
 from src.States.state import DeepAgentState
 from src.MainAgent.tools.todo_tools import write_todos, read_todos , get_current_datetime 
 from src.MainAgent.tools.documents_tools import(
@@ -13,7 +13,6 @@ from src.MainAgent.tools.documents_tools import(
     read_pdf_file,
     list_cached_files,
     get_cached_file,
-    list_all_files
 )
 from src.MainAgent.tools.image_analysis import analyze_image
 from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION  , IMAGE_ANALYSIS_TOOL_DESCRIPTION , TASK_DESCRIPTION_PREFIX , MEMORY_TOOL_INSTRUCTIONS
@@ -55,7 +54,7 @@ class MainAgent:
             write_todos, read_todos, save_user_info, get_user_info, get_current_datetime,
             read_text_file, read_excel_file, create_pdf_file, read_pdf_file,
             list_cached_files, get_cached_file,
-            analyze_image , list_all_files
+            analyze_image 
         ] 
         all_tools = delegation_tools + built_in_tools
 
@@ -114,11 +113,19 @@ class MainAgent:
         )
 
         return agent
-    
 
 
+# Lazy initialization pattern for production
+_main_agent = None
+_agent_lock = asyncio.Lock()
 
-main_agent = asyncio.run(MainAgent().create_main_agent())
+async def get_main_agent():
+    """Get or create the main agent instance (lazy initialization)."""
+    global _main_agent
+    async with _agent_lock:
+        if _main_agent is None:
+            _main_agent = await MainAgent().create_main_agent()
+        return _main_agent
 
 
 async def main():
