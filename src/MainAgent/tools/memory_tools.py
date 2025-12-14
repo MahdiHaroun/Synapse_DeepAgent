@@ -99,7 +99,7 @@ def save_sequence_protocol(sequence_description: str, runtime: ToolRuntime[Conte
         store.put(("protocols",), sequence_id, sequence_data)
         
         print(f"DEBUG: Successfully saved sequence protocol with ID: {sequence_id}")
-        return f"Successfully saved task sequence protocol. You can reference this workflow in future conversations."
+        return "Successfully saved task sequence protocol. You can reference this workflow in future conversations."
     except Exception as e:
         print(f"ERROR in save_sequence_protocol: {e}")
         import traceback
@@ -120,7 +120,7 @@ def search_sequence_protocols(query: str, runtime: ToolRuntime[Context]) -> str:
         store = runtime.store
         user_id = runtime.context.user_id
         
-        print(f"DEBUG: search_sequence_protocols called")
+        print("DEBUG: search_sequence_protocols called")
         print(f"DEBUG: Searching protocols for user_id: {user_id} with query: {query}")
         print(f"DEBUG: Store type: {type(store)}")
         
@@ -133,18 +133,18 @@ def search_sequence_protocols(query: str, runtime: ToolRuntime[Context]) -> str:
         
         # Try semantic search - if it fails, fall back to listing
         try:
-            print(f"DEBUG: Attempting semantic search...")
+            print("DEBUG: Attempting semantic search...")
             results = store.search(
                 ("protocols",),
                 query=query,
                 limit=5
             )
-            print(f"DEBUG: Search successful, processing results...")
+            print("DEBUG: Search successful, processing results...")
         except Exception as search_error:
             print(f"ERROR: Semantic search failed: {search_error}")
             # Fallback: just list all protocols
             results = store.list(("protocols",), limit=5)
-            print(f"DEBUG: Using list() fallback instead")
+            print("DEBUG: Using list() fallback instead")
         
         if not results:
             return "No task sequences found in memory yet."

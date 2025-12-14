@@ -1,7 +1,7 @@
 from src.LLMs.GroqLLMs.llms import groq_llama3_llm 
 from Synapse_RAG.tools.tools import get_query_results , get_object_id_list
 from langchain.agents import create_agent 
-
+import asyncio
 
 
 
@@ -40,7 +40,7 @@ class RAGAgent:
 
 
 # Initialize agent synchronously for module-level import
-import asyncio
+
 try:
     loop = asyncio.get_event_loop()
 except RuntimeError:

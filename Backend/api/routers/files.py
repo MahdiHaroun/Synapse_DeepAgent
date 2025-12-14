@@ -1,8 +1,7 @@
 from fastapi import APIRouter , HTTPException , Depends , status   , UploadFile , File
-import uuid 
 from Backend.api.database import get_db
 from sqlalchemy.orm import Session
-from Backend.api import database, models, schemas, utils, auth
+from Backend.api import models, auth
 import boto3
 
 

@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, Form, HTTPException, logger, status , UploadFile, File 
+from fastapi import APIRouter, Depends, Form, HTTPException, status , UploadFile, File 
 import hashlib
 from sqlalchemy.orm import Session
 from Backend.api.database import get_db
-from Backend.api import models, schemas, auth
+from Backend.api import models, auth
 from src.MainAgent.agent import get_main_agent
 from src.MainAgent.tools.memory_tools import Context
 from fastapi.responses import StreamingResponse
