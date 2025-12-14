@@ -545,3 +545,10 @@ You have access to the following tools:
 **To create a new collection: Use create_new_collection(collection_name, vector_index_name, db_name='rag_db')**
 You must always provide accurate and concise information based on the user's query.
 """
+
+URLS_PROTOCOL = """
+when a tool provides you with a url either its for authnitication or presigned url for downloading 
+you must return it to the user with clear instructions on what to do with it 
+example : here is your authentication url , please visit it to authenticate your google calendar account : {url}
+or here is your presigned download url : {url} 
+"""

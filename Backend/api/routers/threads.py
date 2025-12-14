@@ -5,8 +5,11 @@ from Backend.api import schemas
 from sqlalchemy.orm import Session
 from Backend.api import database, models, schemas, utils, auth
 import boto3
+from dotenv import load_dotenv
 
-router = APIRouter(prefix="/threads")
+load_dotenv("Backend/api/.env")
+
+router = APIRouter(prefix="/threads" , tags=["Threads"])
 
 
 
@@ -109,6 +112,26 @@ async def delete_thread(
     except Exception as e:
 
         print(f"S3 cleanup failed for thread {thread_id}: {e}")
+    #---- MongoDB cleanup ----
+    try:
+        from pymongo import MongoClient
+        import os
+        
+        mongo_uri = os.getenv("MONGODB_URI")
+        mongo_client = MongoClient(mongo_uri)
+        db_mongo = mongo_client["Synapse_memory_db"]
+        
+        # Clear short-term memory (checkpoints) for this thread
+        checkpoints_collection = db_mongo["checkpointing_db.checkpoints"]
+        checkpoint_writes_collection = db_mongo["checkpointing_db.checkpoint_writes"]
+        
+        delete_checkpoints = checkpoints_collection.delete_many({"thread_id": thread_id})
+        delete_writes = checkpoint_writes_collection.delete_many({"thread_id": thread_id})
+        
+        if delete_checkpoints.deleted_count > 0 or delete_writes.deleted_count > 0:
+            print(f"Deleted {delete_checkpoints.deleted_count} checkpoints and {delete_writes.deleted_count} checkpoint writes for thread {thread_id} from MongoDB.")
+    except Exception as e:
+        print(f"MongoDB cleanup failed for thread {thread_id}: {e}")
 
     return {
         "detail": "Thread deleted successfully"
@@ -128,6 +151,8 @@ async def delete_all_threads(
     s3 = boto3.client("s3")
     bucket_name = "synapse-openapi-schemas"
 
+    thread_ids = [thread.uuid for thread in threads]
+    
     for thread in threads:
         thread_id = thread.uuid
 
@@ -151,6 +176,27 @@ async def delete_all_threads(
             print(f"S3 cleanup failed for thread {thread_id}: {e}")
 
     db.commit()
+
+    # ---- MongoDB cleanup for all threads ----
+    if thread_ids:
+        try:
+            from pymongo import MongoClient
+            import os
+            
+            mongo_uri = os.getenv("MONGODB_URI")
+            mongo_client = MongoClient(mongo_uri)
+            db_mongo = mongo_client["Synapse_memory_db"]
+            
+            # Clear short-term memory (checkpoints) for all threads
+            checkpoints_collection = db_mongo["agent_checkpoints"]
+            checkpoint_writes_collection = db_mongo["checkpointing_db.checkpoint_writes"]
+            
+            delete_checkpoints = checkpoints_collection.delete_many({"thread_id": {"$in": thread_ids}})
+            delete_writes = checkpoint_writes_collection.delete_many({"thread_id": {"$in": thread_ids}})
+            
+            print(f"Deleted {delete_checkpoints.deleted_count} checkpoints and {delete_writes.deleted_count} checkpoint writes for all threads from MongoDB.")
+        except Exception as e:
+            print(f"MongoDB cleanup failed: {e}")
 
     return {
         "detail": "All threads are deleted successfully " + ("and S3 objects removed." if threads else ".")

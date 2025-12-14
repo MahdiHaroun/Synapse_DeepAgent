@@ -6,7 +6,7 @@ from Backend.api import database, models, schemas, utils, auth
 import boto3
 
 
-router = APIRouter(prefix="/files")
+router = APIRouter(prefix="/files" , tags=["Files"])
 s3 = boto3.client("s3", region_name="eu-central-1")
 bucket_name = "synapse-openapi-schemas"
 

@@ -15,7 +15,7 @@ from src.MainAgent.tools.documents_tools import(
     get_cached_file,
 )
 from src.MainAgent.tools.image_analysis import analyze_image
-from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION  , IMAGE_ANALYSIS_TOOL_DESCRIPTION , TASK_DESCRIPTION_PREFIX , MEMORY_TOOL_INSTRUCTIONS
+from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION  , IMAGE_ANALYSIS_TOOL_DESCRIPTION , TASK_DESCRIPTION_PREFIX , MEMORY_TOOL_INSTRUCTIONS , URLS_PROTOCOL
 from langchain.agents import create_agent
 #from langgraph.checkpoint.memory import InMemorySaver 
 from langgraph.checkpoint.mongodb import MongoDBSaver
@@ -70,6 +70,8 @@ class MainAgent:
         + TASK_DESCRIPTION_PREFIX.format(other_agents="DB_sub_agent , DB_analyzer_agent, EC_agent , AWS_S3_agent , analysis_agent , Calendar_agent, Auth_agent, Web_Search_agent, RAG_agent")
         + "\n\n"
         + MEMORY_TOOL_INSTRUCTIONS
+        + "\n\n"
+        + URLS_PROTOCOL
         + "\n\n"
         + DOCUMENTS_TOOL_DESCRIPTION
         + "\n\n"
