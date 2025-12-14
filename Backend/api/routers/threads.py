@@ -22,7 +22,9 @@ async def create_new_thread(thread_details: schemas.ThreadCreate, db: Session = 
     Create a new chat session (thread_id) for streaming.
     """
     # Generate unique UUID for the thread
-    thread_uuid = str(uuid.uuid4())
+    thread_uuid = thread_details.uuid
+    if not thread_uuid:
+        thread_uuid = str(uuid.uuid4())
     
     new_thread = models.Thread(
         uuid=thread_uuid,

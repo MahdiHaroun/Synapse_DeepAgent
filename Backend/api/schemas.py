@@ -57,10 +57,8 @@ class TokenData(BaseModel):
 
 
 class ThreadCreate(BaseModel):
-    uuid: str
-    last_interaction: Optional[str] = None
-    is_active: Optional[bool] = True
-    admin_id: int
+    uuid: Optional[str] = None
+
 
 class ThreadOut(BaseModel):
     id: int
