@@ -57,8 +57,10 @@ class TokenData(BaseModel):
 
 
 class ThreadCreate(BaseModel):
-    uuid: Optional[str] = None
-
+    uuid: str
+    last_interaction: Optional[str] = None
+    is_active: Optional[bool] = True
+    admin_id: int
 
 class ThreadOut(BaseModel):
     id: int
@@ -76,6 +78,10 @@ class ThreadOut(BaseModel):
     @classmethod
     def model_validate(cls, obj):
         if hasattr(obj, 'last_interaction') and obj.last_interaction:
-            obj.last_interaction = obj.last_interaction.isoformat()
-        return super().model_validate(obj)
+            obj.last_interaction
+
+class ProtocolCreate(BaseModel):
+    sequence_description: str
+
+    
 

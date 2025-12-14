@@ -55,3 +55,9 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     
     return admin
 
+
+def get_mongo_client():
+    from pymongo import MongoClient
+    mongo_url = os.getenv("mongo_url")
+    client = MongoClient(mongo_url)
+    return client
