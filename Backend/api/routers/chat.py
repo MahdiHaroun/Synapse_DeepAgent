@@ -125,7 +125,7 @@ async def stream_chat_simple(
 
             main_agent = await get_main_agent()
             async for event in main_agent.astream_events(
-                    {"messages": [{"role": "user", "content": message}] , "thread_id": thread_id, },
+                    {"messages": [{"role": "user", "content": user_message}] , "thread_id": thread_id, },
                     config={"configurable": {"thread_id": thread_id}},
                     version="v2",
                     context=Context(user_id=admin_username),

@@ -3,7 +3,7 @@ from Backend.api.database import get_db , engine , Base
 import Backend.api.schemas
 from sqlalchemy.orm import Session
 from Backend.api import database, models, schemas, utils, auth
-from Backend.api.routers import auth , threads , files  , chat
+from Backend.api.routers import auth , threads , files  , chat , protocols
 from contextlib import asynccontextmanager
 
 # Create all database tables
@@ -18,6 +18,7 @@ app.include_router(auth.router)
 app.include_router(threads.router)
 app.include_router(files.router)
 app.include_router(chat.router)
+app.include_router(protocols.router)
 
 
 

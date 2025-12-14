@@ -3,6 +3,7 @@ import os
 from pymongo import MongoClient
 from src.SubAgents.subAgents import task_tool 
 from src.LLMs.GroqLLMs.llms import groq_moonshotai_llm 
+from Synapse_RAG.embedding.embedding import titan_embed_v1
 #from src.LLMs.AWS_LLMs.llms import sonnet_4_llm
 from src.States.state import DeepAgentState
 from src.MainAgent.tools.todo_tools import write_todos, read_todos , get_current_datetime 
@@ -20,12 +21,15 @@ from langchain.agents import create_agent
 #from langgraph.checkpoint.memory import InMemorySaver 
 from langgraph.checkpoint.mongodb import MongoDBSaver
 from langgraph.store.mongodb import MongoDBStore
+from langgraph.store.mongodb.base import VectorIndexConfig
 from langchain.agents.middleware import SummarizationMiddleware #, HumanInTheLoopMiddleware
 from dotenv import load_dotenv
 from src.MainAgent.tools.memory_tools import (
     Context,
     save_user_info,
-    get_user_info
+    get_user_info,
+    save_sequence_protocol,
+    search_sequence_protocols
 )
 
 
@@ -45,13 +49,23 @@ class MainAgent:
 
         # Long-term / semantic store 
         self.long_term_store = MongoDBStore(
-            collection=self.db["synapse_agent_store"]
+            collection=self.db["synapse_agent_store"],
+            index_config=VectorIndexConfig(
+                dims=1536,
+                embed=titan_embed_v1,  # Use the embedding function
+                fields=["sequence_protocol"],
+                filters=[]  # No additional filters for now
+            ),
+            auto_index_timeout=60  # Increase timeout to 60 seconds for index creation
         )
     
     async def main_agent_tools(self):
         delegation_tools = [task_tool] 
         built_in_tools = [
-            write_todos, read_todos, save_user_info, get_user_info, get_current_datetime,
+            write_todos, read_todos, 
+            save_user_info, get_user_info,
+            save_sequence_protocol, search_sequence_protocols,
+            get_current_datetime,
             read_text_file, read_excel_file, create_pdf_file, read_pdf_file,
             list_cached_files, get_cached_file,
             analyze_image 
