@@ -1,0 +1,22 @@
+# ignore python cache
+**/__pycache__/
+**/*.pyc
+
+# ignore specific MCP servers (not rag_server)
+Backend/mcp/google_gmail/
+Backend/mcp/aws_S3_server/
+Backend/mcp/google_calender/
+Backend/mcp/analysis_tools_server/
+Backend/mcp/auth_server/
+Backend/mcp/web_server/
+
+# git + venv
+.git
+.venv
+.env
+.env.*
+venv*/
+# ignore IDE files
+.vscode/
+.idea/
+*.iml   

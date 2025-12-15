@@ -1,0 +1,152 @@
+version: '3.9'
+
+services:
+  # Main API Application
+  main-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: synapse-main-api
+    env_file:
+      - .env
+    ports:
+      - "8070:8070"
+    volumes:
+      - synapse-shared:/shared
+      - ./logs:/app/logs
+      - ./saved_downloads:/app/saved_downloads
+      - ./generated_images:/app/generated_images
+    networks:
+      - synapse-network
+    restart: unless-stopped
+
+  # MCP Server: Gmail
+  mcp-gmail:
+    build:
+      context: ./Backend/mcp/google_gmail
+      dockerfile: Dockerfile
+    container_name: synapse-mcp-gmail
+    env_file:
+      - .env
+    ports:
+      - "3050:3050"
+    volumes:
+      - synapse-shared:/shared
+      - ./.env:/app/.env:ro
+    networks:
+      - synapse-network
+    restart: unless-stopped
+
+  # MCP Server: AWS S3
+  mcp-s3:
+    build:
+      context: ./Backend/mcp/aws_S3_server
+      dockerfile: Dockerfile
+    container_name: synapse-mcp-s3
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    volumes:
+      - synapse-shared:/shared
+      - ./.env:/app/.env:ro
+    networks:
+      - synapse-network
+    restart: unless-stopped
+
+  # MCP Server: Google Calendar
+  mcp-calendar:
+    build:
+      context: ./Backend/mcp/google_calender
+      dockerfile: Dockerfile
+    container_name: synapse-mcp-calendar
+    env_file:
+      - .env
+    ports:
+      - "3030:3030"
+    volumes:
+      - synapse-shared:/shared
+      - ./.env:/app/.env:ro
+    networks:
+      - synapse-network
+    restart: unless-stopped
+
+  # MCP Server: Analysis Tools
+  mcp-analysis:
+    build:
+      context: ./Backend/mcp/analysis_tools_server
+      dockerfile: Dockerfile
+    container_name: synapse-mcp-analysis
+    env_file:
+      - .env
+    ports:
+      - "3040:3040"
+    volumes:
+      - synapse-shared:/shared
+      - ./.env:/app/.env:ro
+    networks:
+      - synapse-network
+    restart: unless-stopped
+
+  # MCP Server: Auth
+  mcp-auth:
+    build:
+      context: ./Backend/mcp/auth_server
+      dockerfile: Dockerfile
+    container_name: synapse-mcp-auth
+    env_file:
+      - .env
+    ports:
+      - "3060:3060"
+    volumes:
+      - synapse-shared:/shared
+      - ./.env:/app/.env:ro
+    networks:
+      - synapse-network
+    restart: unless-stopped
+
+  # MCP Server: Web Search
+  mcp-web:
+    build:
+      context: ./Backend/mcp/web_server
+      dockerfile: Dockerfile
+    container_name: synapse-mcp-web
+    env_file:
+      - .env
+    ports:
+      - "3020:3020"
+    volumes:
+      - synapse-shared:/shared
+      - ./.env:/app/.env:ro
+    networks:
+      - synapse-network
+    restart: unless-stopped
+
+  # MCP Server: RAG Service
+  mcp-rag:
+    build:
+      context: ./Backend/mcp/rag_server
+      dockerfile: Dockerfile
+    container_name: synapse-mcp-rag
+    env_file:
+      - .env
+    ports:
+      - "3010:3010"
+    volumes:
+      - synapse-shared:/shared
+      - ./.env:/app/.env:ro
+    networks:
+      - synapse-network
+    restart: unless-stopped
+
+volumes:
+  synapse-postgres-data:
+    driver: local
+  synapse-mongodb-data:
+    driver: local
+  synapse-shared:
+    driver: local
+
+networks:
+  synapse-network:
+    driver: bridge

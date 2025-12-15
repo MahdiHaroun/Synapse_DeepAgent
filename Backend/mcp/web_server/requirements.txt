@@ -1,0 +1,5 @@
+mcp
+langchain-community
+aiohttp
+beautifulsoup4
+python-dotenv

@@ -15,13 +15,8 @@ import mimetypes
 import io
 import boto3
 
-# Load .env from project root
-env_path = Path(__file__).parent.parent.parent.parent / ".env"
-load_dotenv(env_path)
-
-# Debug: Print the resolved path and check if file exists
-print(f"Looking for .env at: {env_path}")
-print(f".env file exists: {env_path.exists()}")
+# Load .env from mounted volume
+load_dotenv("/app/.env")
 
 # Initialize the MCP server
 mcp = FastMCP("GoogleGmail", host="0.0.0.0", port=3050)

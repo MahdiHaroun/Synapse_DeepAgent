@@ -6,9 +6,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env from project root
-env_path = Path(__file__).parent.parent.parent.parent / ".env"
-load_dotenv(env_path)
+# Load .env from mounted volume
+load_dotenv("/app/.env")
 
 # Initialize Resend API key
 resend.api_key = os.getenv("RESEND_API_KEY")

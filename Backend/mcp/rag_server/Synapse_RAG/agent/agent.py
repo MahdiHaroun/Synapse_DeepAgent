@@ -1,4 +1,4 @@
-from src.LLMs.GroqLLMs.llms import groq_llama3_llm 
+from Synapse_RAG.llm.llm import groq_llama3_llm
 from Synapse_RAG.tools.tools import get_query_results , get_object_id_list
 from langchain.agents import create_agent 
 import asyncio

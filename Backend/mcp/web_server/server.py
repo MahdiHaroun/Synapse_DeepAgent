@@ -7,8 +7,7 @@ from pathlib import Path
 import os
 
 
-env_path = Path(__file__).parent.parent.parent.parent / ".env"
-load_dotenv(env_path)
+load_dotenv("/app/.env")
 os.environ["TAVILY_API_KEY"] = os.getenv("TAVILY_API_KEY")
 mcp = FastMCP("web-server" , host="0.0.0.0", port=3020)
 

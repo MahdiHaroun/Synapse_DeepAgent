@@ -1,0 +1,7 @@
+pandas
+seaborn
+numpy
+prophet 
+boto3
+matplotlib
+mcp

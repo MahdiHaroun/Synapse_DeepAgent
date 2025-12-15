@@ -8,9 +8,8 @@ from dotenv import load_dotenv
 import os
 from pathlib import Path
 
-# Load .env from project root
-env_path = Path(__file__).parent.parent.parent.parent / ".env"
-load_dotenv(env_path)
+# Load .env from mounted volume
+load_dotenv("/app/.env")
 
 # Initialize the MCP server
 mcp = FastMCP("GoogleCalendar", host="0.0.0.0", port=3030)
