@@ -1,35 +1,35 @@
 {
   "mcpServers": {
     "postgres": {
-      "url": "http://localhost:8000/sse",
+      "url": "http://host.docker.internal:8000/sse",
       "transport": "sse"
     },
     "aws-s3": {
-      "url": "http://localhost:3000/sse",
+      "url": "http://host.docker.internal:3000/sse",
       "transport": "sse"
     },
     "google-calendar": {
-      "url": "http://localhost:3030/sse",
+      "url": "http://host.docker.internal:3030/sse",
       "transport": "sse"
     },
     "analysis-tools": {
-      "url": "http://localhost:3040/sse",
+      "url": "http://host.docker.internal:3040/sse",
       "transport": "sse"
     },
     "google-gmail": {
-      "url": "http://localhost:3050/sse",
+      "url": "http://host.docker.internal:3050/sse",
       "transport": "sse"
     },
     "auth": {
-      "url": "http://localhost:3060/sse",
+      "url": "http://host.docker.internal:3060/sse",
       "transport": "sse"
     },
     "web-search": {
-      "url": "http://localhost:3020/sse",
+      "url": "http://host.docker.internal:3020/sse",
       "transport": "sse"
     },
     "rag-service": {
-      "url": "http://localhost:3010/sse",
+      "url": "http://host.docker.internal:3010/sse",
       "transport": "sse"
     }
   }
