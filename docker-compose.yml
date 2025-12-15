@@ -87,6 +87,7 @@ services:
     volumes:
       - synapse-shared:/shared
       - ./.env:/app/.env:ro
+      - ~/.aws:/root/.aws:ro
     networks:
       - synapse-network
     restart: unless-stopped
