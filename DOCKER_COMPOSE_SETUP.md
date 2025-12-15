@@ -6,6 +6,7 @@ This guide explains how to run the entire Synapse DeepAgent system using Docker 
 
 - Docker Engine 20.10+
 - Docker Compose V2+
+- AWS CLI configured with credentials in `~/.aws/` (for AWS services)
 
 ## Quick Start
 
@@ -22,9 +23,10 @@ nano .env  # or use your preferred editor
 Make sure to set all required values:
 - Database credentials
 - MongoDB URI (use `mongodb://mongodb:27017` for docker-compose)
-- AWS credentials
 - API keys (GROQ, RESEND, TAVILY)
 - Google OAuth credentials
+
+**Note:** AWS credentials are automatically mounted from `~/.aws/` on your host machine. Make sure you have run `aws configure` before starting containers.
 
 ### 2. Build and Start All Services
 
