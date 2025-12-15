@@ -23,3 +23,7 @@ Tool checks cache before reading disk ✅
 
 
 Resetting state ensures each new upload is processed cleanly, while not resetting risks mixing data from previous files and producing inconsistent results.
+
+
+
+aws s3 must be {admin_folder} ==> many thread folders
