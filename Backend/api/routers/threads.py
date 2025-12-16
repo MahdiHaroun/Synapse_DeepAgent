@@ -29,7 +29,15 @@ async def create_new_thread(thread_details: schemas.ThreadCreate, db: Session = 
     Create a new chat session (thread_id) for streaming.
     """
     # Generate unique UUID for the thread
+    
     thread_uuid = thread_details.uuid
+    
+    #check fo duplicate
+    existing_thread = db.query(models.Thread).filter(models.Thread.uuid == thread_uuid,
+                                            models.Thread.admin_id == current_user.id).first()
+    if existing_thread:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Thread with this UUID already exists")
+    
     if not thread_uuid:
         thread_uuid = str(uuid.uuid4())
     
@@ -56,7 +64,6 @@ async def get_threads(db: Session = Depends(get_db),
     """
     threads = db.query(models.Thread).filter(models.Thread.admin_id == current_user.id).all()
     return threads
-
 
 @router.get("/get_thread/{thread_id}" , response_model=schemas.ThreadOut)
 async def get_thread(thread_id: str, db: Session = Depends(get_db),
