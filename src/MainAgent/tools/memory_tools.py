@@ -14,7 +14,7 @@ mongo_db = mongo_client["Synapse_admins_info"]  # Same DB as agent uses
 @dataclass
 class Context:
     user_id: str
-
+    thread_id: str
 
 class UserInfo(TypedDict):
     name: str

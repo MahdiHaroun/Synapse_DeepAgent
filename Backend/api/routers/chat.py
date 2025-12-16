@@ -128,7 +128,7 @@ async def stream_chat_simple(
                     {"messages": [{"role": "user", "content": user_message}] , "thread_id": thread_id, },
                     config={"configurable": {"thread_id": thread_id}},
                     version="v2",
-                    context=Context(user_id=admin_username),
+                    context=Context(user_id=admin_username , thread_id=thread_id),
                 ):
 
                 kind = event["event"]

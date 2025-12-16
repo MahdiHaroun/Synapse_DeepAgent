@@ -7,9 +7,14 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# install deps first (better cache)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+
+RUN apt-get update && \
+    apt-get install -y fonts-dejavu && \
+    rm -rf /var/lib/apt/lists/*
+
 
 # copy ONLY what we need
 COPY Backend/api Backend/api

@@ -1,11 +1,13 @@
 from PyPDF2 import PdfReader
 import os
-from langchain_core.tools import tool, InjectedToolCallId
+from langchain_core.tools import tool, InjectedToolCallId 
+from langchain.tools import ToolRuntime
 from langchain_core.messages import ToolMessage
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from typing import Annotated
 from src.States.state import DeepAgentState
+from src.MainAgent.tools.memory_tools import Context
 import boto3
 from dotenv import load_dotenv
 load_dotenv("/app/.env")
@@ -23,7 +25,7 @@ os.environ["AWS_DEFAULT_REGION"] = os.getenv("AWS_DEFAULT_REGION")
 
 @tool()
 async def create_pdf_file(
-    thread_id: str,
+    runtime: ToolRuntime[Context],
     content: str,
     image_s3_keys: list = None,  # now expects S3 keys like "thread_id/file.png"
     bucket_name: str = "synapse-openapi-schemas"
@@ -48,8 +50,10 @@ async def create_pdf_file(
 
     # Add UTF-8 font
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+
     if not os.path.exists(font_path):
-        raise FileNotFoundError("Font file DejaVuSans.ttf not found on server.")
+        font_path = "/app/fonts/DejaVuSans.ttf"  # fallback
+
 
     pdf.add_font("DejaVu", "", font_path, uni=True)
     pdf.set_font("DejaVu", size=12)
@@ -85,7 +89,8 @@ async def create_pdf_file(
     # Add text content
     for line in content.split("\n"):
         pdf.multi_cell(0, 8, line)
-
+    
+    thread_id = runtime.context.thread_id
     # Save PDF to S3
     pdf_file_key = f"{thread_id}/{uuid4().hex}.pdf"
     tmp_pdf_path = f"/tmp/{uuid4().hex}.pdf"
