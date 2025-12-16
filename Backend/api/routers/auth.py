@@ -2,9 +2,40 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from Backend.api import database, models, schemas, utils, auth
-
+from langgraph.store.mongodb import MongoDBStore
+import os
+from pymongo import MongoClient
 
 router = APIRouter(prefix="/admins", tags=["Authentication"])
+
+mongo_uri = os.getenv("MONGODB_URI")
+mongo_client = MongoClient(mongo_uri)
+mongo_db = mongo_client["Synapse_admins_info"]  # Same DB as agent uses
+
+
+def save_user_info(user_info: dict, admin_username: str) -> str:
+    """Save user information in the long-term store."""
+    try:
+        long_term_store = MongoDBStore(
+            collection=mongo_db["synapse_agent_store"]
+        )
+        store = long_term_store
+        user_id = admin_username
+        
+        print(f"DEBUG: Attempting to save user_info for user_id: {user_id}")
+        print(f"DEBUG: user_info: {user_info}")
+        print(f"DEBUG: store type: {type(store)}")
+        
+        # Store data in the store (namespace, key, data) - synchronous call
+        store.put(("users",), user_id, user_info)
+        
+        return "Successfully saved user info."
+    except Exception as e:
+        print(f"ERROR in save_user_info: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"Error saving user info: {str(e)}"
+
 
 
 
@@ -30,13 +61,19 @@ async def register(admin_details: schemas.AdminCreate, db: Session = Depends(dat
     db.add(new_admin)
     db.commit()
     db.refresh(new_admin)
+
+    # Save user info to long-term store
+    user_info = {
+        "name": new_admin.name,
+        "email": new_admin.email,
+    }
+    try:
+        save_user_info(user_info, new_admin.username)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="internal error saving user info")
     
     return {
         "Confirmation": "Welcome aboard, " + new_admin.name + "!",
-        "id": new_admin.id,
-        "name": new_admin.name,
-        "email": new_admin.email,
-        "username": new_admin.username
     }
 
 

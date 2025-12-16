@@ -26,7 +26,6 @@ from langchain.agents.middleware import SummarizationMiddleware #, HumanInTheLoo
 from dotenv import load_dotenv
 from src.MainAgent.tools.memory_tools import (
     Context,
-    save_user_info,
     get_user_info,
     save_sequence_protocol,
     search_sequence_protocols
@@ -63,7 +62,7 @@ class MainAgent:
         delegation_tools = [task_tool] 
         built_in_tools = [
             write_todos, read_todos, 
-            save_user_info, get_user_info,
+            get_user_info,
             save_sequence_protocol, search_sequence_protocols,
             get_current_datetime,
             read_text_file, read_excel_file, create_pdf_file, read_pdf_file,

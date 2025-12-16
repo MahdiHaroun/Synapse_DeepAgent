@@ -1,7 +1,14 @@
 from dataclasses import dataclass 
 from typing_extensions import TypedDict 
 from langchain.tools import tool, ToolRuntime
+from langgraph.store.mongodb import MongoDBStore
+import os
+from pymongo import MongoClient
 
+
+mongo_uri = os.getenv("MONGODB_URI")
+mongo_client = MongoClient(mongo_uri)
+mongo_db = mongo_client["Synapse_admins_info"]  # Same DB as agent uses
 
 
 @dataclass
@@ -17,35 +24,14 @@ class UserInfo(TypedDict):
 
 
 
-
-@tool
-def save_user_info(user_info: dict, runtime: ToolRuntime[Context]) -> str:
-    """Save user information in the long-term store."""
-    try:
-        store = runtime.store
-        user_id = runtime.context.user_id
-        
-        print(f"DEBUG: Attempting to save user_info for user_id: {user_id}")
-        print(f"DEBUG: user_info: {user_info}")
-        print(f"DEBUG: store type: {type(store)}")
-        
-        # Store data in the store (namespace, key, data)
-        store.put(("users",), user_id, user_info)
-        
-        print("DEBUG: Successfully called store.put()")
-        return "Successfully saved user info."
-    except Exception as e:
-        print(f"ERROR in save_user_info: {e}")
-        import traceback
-        traceback.print_exc()
-        return f"Error saving user info: {str(e)}"
-
-
 @tool
 def get_user_info(runtime: ToolRuntime[Context]) -> str:
     """Retrieve user information from the long-term store."""
     try:
-        store = runtime.store
+        store = MongoDBStore(
+            collection=mongo_db["synapse_agent_store"]
+        )
+        store = store
         user_id = runtime.context.user_id
         
         print(f"DEBUG: Attempting to get user_info for user_id: {user_id}")

@@ -50,8 +50,6 @@ MEMORY_TOOL_INSTRUCTIONS = """
 ## User Information Management
 At the beginning of conversations:
 1. Use `get_user_info` to retrieve stored user information (name, email)
-2. If no information exists, ask the user for their name and email
-3. Use `save_user_info` to save the information for future conversations
 4. Greet the user by name once you have their information
 5. Use their email for calendar, communication, and authentication tasks
 
@@ -71,6 +69,11 @@ pdf report : when creating a pdf report , send it to email mahdimharoun44@gmail.
 
 **Critical:** Save these protocols IMMEDIATELY when user describes them, then confirm:
 "I've saved this workflow to memory: [brief summary]. I'll remember it for next time."
+
+
+
+**IMPORTANT**: you must always use get_user_info at the start of every conversation to get user name and email.
+you are not allowed to ask user for his name or email directly and not allowed to skip the tool calls.
 """
 
 DB_AGENT_INSTRUCTIONS = """
