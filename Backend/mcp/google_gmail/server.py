@@ -18,6 +18,17 @@ import boto3
 # Load .env from mounted volume
 load_dotenv("/app/.env")
 
+
+os.environ["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_ACCESS_KEY_ID")
+os.environ["AWS_SECRET_ACCESS_KEY"] = os.getenv("AWS_SECRET_ACCESS_KEY")
+os.environ["AWS_DEFAULT_REGION"] = os.getenv("AWS_DEFAULT_REGION")
+
+"""
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
+load_dotenv(env_path)
+
+"""
+
 # Initialize the MCP server
 mcp = FastMCP("GoogleGmail", host="0.0.0.0", port=3050)
 

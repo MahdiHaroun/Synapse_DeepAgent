@@ -3,7 +3,7 @@ import os
 from pymongo import MongoClient
 from src.SubAgents.subAgents import task_tool 
 from src.LLMs.GroqLLMs.llms import groq_moonshotai_llm 
-from Synapse_RAG.embedding.embedding import titan_embed_v1
+from src.embedding.embedding import titan_embed_v1
 #from src.LLMs.AWS_LLMs.llms import sonnet_4_llm
 from src.States.state import DeepAgentState
 from src.MainAgent.tools.todo_tools import write_todos, read_todos , get_current_datetime 

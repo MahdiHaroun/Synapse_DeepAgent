@@ -6,8 +6,12 @@ from sqlalchemy.orm import Session
 from Backend.api import models,  auth
 import boto3
 from dotenv import load_dotenv
-
+import os
 load_dotenv("Backend/api/.env")
+
+os.environ["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_ACCESS_KEY_ID")
+os.environ["AWS_SECRET_ACCESS_KEY"] = os.getenv("AWS_SECRET_ACCESS_KEY")
+os.environ["AWS_DEFAULT_REGION"] = os.getenv("AWS_DEFAULT_REGION")
 
 router = APIRouter(prefix="/threads" , tags=["Threads"])
 

@@ -5,11 +5,18 @@ import os
 
 mcp = FastMCP("S3" , host="0.0.0.0", port=3000)
 
+os.environ["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_ACCESS_KEY_ID")
+os.environ["AWS_SECRET_ACCESS_KEY"] = os.getenv("AWS_SECRET_ACCESS_KEY")
+os.environ["AWS_DEFAULT_REGION"] = os.getenv("AWS_DEFAULT_REGION")
 
 s3 = boto3.client("s3")
 
 
+"""
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
+load_dotenv(env_path)
 
+"""
 
 
 

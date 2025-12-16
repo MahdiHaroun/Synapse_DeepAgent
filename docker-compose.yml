@@ -14,9 +14,9 @@ services:
     volumes:
       - synapse-shared:/shared
       - ./logs:/app/logs
-      - ./saved_downloads:/app/saved_downloads
-      - ./generated_images:/app/generated_images
-      - ~/.aws:/root/.aws:ro
+      - ./.env:/app/.env:ro
+
+      
     networks:
       - synapse-network
     restart: unless-stopped
@@ -34,7 +34,7 @@ services:
     volumes:
       - synapse-shared:/shared
       - ./.env:/app/.env:ro
-      - ~/.aws:/root/.aws:ro
+      
     networks:
       - synapse-network
     restart: unless-stopped
@@ -52,7 +52,7 @@ services:
     volumes:
       - synapse-shared:/shared
       - ./.env:/app/.env:ro
-      - ~/.aws:/root/.aws:ro
+      
     networks:
       - synapse-network
     restart: unless-stopped
@@ -87,7 +87,7 @@ services:
     volumes:
       - synapse-shared:/shared
       - ./.env:/app/.env:ro
-      - ~/.aws:/root/.aws:ro
+      
     networks:
       - synapse-network
     restart: unless-stopped
@@ -139,7 +139,7 @@ services:
     volumes:
       - synapse-shared:/shared
       - ./.env:/app/.env:ro
-      - ~/.aws:/root/.aws:ro
+      
     networks:
       - synapse-network
     restart: unless-stopped

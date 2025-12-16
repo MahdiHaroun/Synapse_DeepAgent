@@ -8,7 +8,7 @@ from Backend.api import models, auth
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from langgraph.store.mongodb import MongoDBStore
-from Synapse_RAG.embedding.embedding import titan_embed_v1
+from src.embedding.embedding import titan_embed_v1
 from langgraph.store.mongodb.base import VectorIndexConfig
 from datetime import datetime
 
@@ -16,6 +16,7 @@ load_dotenv("Backend/api/.env")
 
 # Initialize MongoDB connection once
 mongo_uri = os.getenv("MONGODB_URI")
+
 mongo_client = MongoClient(mongo_uri)
 mongo_db = mongo_client["Synapse_memory_db"]  # Same DB as agent uses
 protocols_collection = mongo_db["synapse_agent_store"]

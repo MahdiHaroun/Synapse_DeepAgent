@@ -13,8 +13,6 @@ Backend/mcp/web_server/
 # git + venv
 .git
 .venv
-.env
-.env.*
 venv*/
 # ignore IDE files
 .vscode/

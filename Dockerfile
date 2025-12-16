@@ -9,13 +9,12 @@ WORKDIR /app
 
 # install deps first (better cache)
 COPY requirements.txt .
-RUN pip install --cache-dir=/root/.cache/pip -r requirements.txt 
+RUN pip install --no-cache-dir -r requirements.txt
 
 # copy ONLY what we need
 COPY Backend/api Backend/api
 COPY src src
-COPY Synapse_RAG Synapse_RAG
-COPY main.py .
+
 
 # make imports work
 ENV PYTHONPATH=/app

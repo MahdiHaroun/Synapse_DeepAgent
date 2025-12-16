@@ -3,9 +3,15 @@ from Backend.api.database import get_db
 from sqlalchemy.orm import Session
 from Backend.api import models, auth
 import boto3
+import os
+from dotenv import load_dotenv
 
+load_dotenv("/app/.env")
 
 router = APIRouter(prefix="/files" , tags=["Files"])
+os.environ["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_ACCESS_KEY_ID")
+os.environ["AWS_SECRET_ACCESS_KEY"] = os.getenv("AWS_SECRET_ACCESS_KEY")
+os.environ["AWS_DEFAULT_REGION"] = os.getenv("AWS_DEFAULT_REGION")
 s3 = boto3.client("s3", region_name="eu-central-1")
 bucket_name = "synapse-openapi-schemas"
 
