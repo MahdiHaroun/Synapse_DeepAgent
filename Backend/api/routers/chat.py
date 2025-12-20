@@ -1,294 +1,179 @@
-from fastapi import APIRouter, Depends, Form, HTTPException, status , UploadFile, File 
-import hashlib
+"""
+Chat router for compatibility with existing API structure.
+Provides REST endpoints for WebSocket server information.
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from Backend.api.database import get_db
 from Backend.api import models, auth
-from src.MainAgent.agent import get_main_agent
-from src.MainAgent.tools.memory_tools import Context
-from fastapi.responses import StreamingResponse
-import json
+from src.MainAgent.agent import MainAgent
+from pathlib import Path
+import os
+
+router = APIRouter(prefix="/chat", tags=["Chat"])
+
+# Initialize managers
 
 
+@router.get("/info")
+async def get_chat_info():
+    """Get WebSocket server information."""
+    return {
+        "websocket_url": "ws://localhost:8071",
+        "protocol": "WebSocket with chunked streaming",
+        "message_format": "JSON",
+        "supported_actions": [
+            "auth", "set_thread", "file_start", "file_chunk", "file_end",
+            "image_start", "image_chunk", "image_end", "chat", "cancel"
+        ],
+        "features": [
+            "JWT Authentication",
+            "Chunked File Upload (hex-encoded bytes)",
+            "Chunked Image Upload with validation",
+            "Real-time chat streaming",
+            "Cancellation support via Redis",
+            "Image analysis integration"
+        ],
+        "upload_directory": "/tmp/ws_uploads",
+        "ports": {
+            "rest_api": 8070,
+            "websocket": 8071
+        }
+    }
 
 
-file_cache = {}  # Structure: {thread_id: {file_hash: file_path}}
-
-
-router = APIRouter(prefix="/chat" , tags=["Chat"])
-
-
-@router.get("/current_file_cache/{thread_id}", status_code=status.HTTP_200_OK)
-async def get_current_file_cache(thread_id: str , current_user: models.Admin = Depends(auth.get_current_user) , 
-                           db: Session = Depends(get_db)):
+@router.post("/eventbridge_target")
+async def eventbridge_target(
+    event_data: dict,
+    db: Session = Depends(get_db)
+):
     """
-    Get the current file cache for a specific thread.
+    EventBridge webhook target - receives scheduled events from AWS EventBridge
     """
-    thread = db.query(models.Thread).filter(models.Thread.uuid == thread_id,
-        models.Thread.admin_id == current_user.id).first()
-    if not thread:
-        raise HTTPException(status_code=404, detail="Thread not found")
-    cache = file_cache.get(thread_id, {})
-    return {"file_cache": list(cache.keys())}
+    try:
+        # Extract schedule information from event
+        schedule_name = event_data.get("schedule_name", "unknown")
+        task_data = event_data.get("task_data", {})
+        query = task_data.get("query", event_data.get("content", ""))
+        
+        # Log the event
+        print(f"EventBridge triggered: {schedule_name}")
+        print(f"Query: {query}")
+        
+        # Invoke the main agent with the query
+        if query:
+            result = MainAgent.invoke(query)
+            
+            # Update last_triggered_at in database
+            eventbridge_rule_name = event_data.get("eventbridge_rule_name")
+            if eventbridge_rule_name:
+                from datetime import datetime
+                schedule = db.query(models.EventBridgeSchedule).filter(
+                    models.EventBridgeSchedule.eventbridge_rule_name == eventbridge_rule_name
+                ).first()
+                if schedule:
+                    schedule.last_triggered_at = datetime.now()
+                    db.commit()
+            
+            return {
+                "status": "success",
+                "message": "Schedule executed successfully",
+                "schedule_name": schedule_name,
+                "result": str(result)
+            }
+        else:
+            return {
+                "status": "error",
+                "message": "No query provided in event_data"
+            }
+            
+    except Exception as e:
+        print(f"Error executing scheduled task: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
-
-
-@router.delete("/clear_file_cache/{thread_id}", status_code=status.HTTP_200_OK)
-async def clear_file_cache(thread_id: str , current_user: models.Admin = Depends(auth.get_current_user) , 
-                           db: Session = Depends(get_db)):
+@router.get("/file_cache/{thread_id}")
+async def get_file_cache(
+    thread_id: str,
+    current_user: models.Admin = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
     """
-    Clear the file cache for a specific thread and delete temporary files.
+    Get file cache for a thread (REST endpoint).
+    Note: Files are managed per-connection in WebSocket, not globally cached by thread.
     """
-    thread = db.query(models.Thread).filter(models.Thread.uuid == thread_id,
-        models.Thread.admin_id == current_user.id).first()
+    thread = db.query(models.Thread).filter(
+        models.Thread.uuid == thread_id,
+        models.Thread.admin_id == current_user.id
+    ).first()
+    
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found")
     
-    import os
+    # Check uploads directory for files with this thread_id
+    upload_dir = Path("/tmp/ws_uploads")
+    files = []
+    
+    if upload_dir.exists():
+        for file_path in upload_dir.glob(f"*{thread_id}*"):
+            if file_path.is_file():
+                files.append({
+                    "filename": file_path.name,
+                    "path": str(file_path),
+                    "size": file_path.stat().st_size
+                })
+    
+    return {
+        "thread_id": thread_id,
+        "files": files,
+        "note": "Files are managed per WebSocket connection. Use WebSocket API for real-time file management."
+    }
+
+
+@router.delete("/file_cache/{thread_id}")
+async def clear_file_cache(
+    thread_id: str,
+    current_user: models.Admin = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Clear file cache for a thread (REST endpoint)."""
+    thread = db.query(models.Thread).filter(
+        models.Thread.uuid == thread_id,
+        models.Thread.admin_id == current_user.id
+    ).first()
+    
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    
+    # Remove files from uploads directory
+    upload_dir = Path("/tmp/ws_uploads")
     removed_files = []
-    if thread_id in file_cache:
-        # Delete physical files
-        for file_hash, file_path in file_cache[thread_id].items():
-            if file_path and os.path.exists(file_path):
+    
+    if upload_dir.exists():
+        for file_path in upload_dir.glob(f"*{thread_id}*"):
+            if file_path.is_file():
                 try:
                     os.remove(file_path)
-                    removed_files.append(file_path)
+                    removed_files.append(str(file_path))
                 except Exception as e:
                     print(f"Failed to remove {file_path}: {e}")
-        # Clear from cache
-        del file_cache[thread_id]
     
-    return {"detail": f"File cache cleared for thread {thread_id}", "removed_files": removed_files}
+    return {
+        "thread_id": thread_id,
+        "removed_files": removed_files,
+        "status": "cleared"
+    }
 
 
-
-@router.post("/stream_response/{thread_id}")
-async def stream_chat_simple(
-    thread_id: str, 
-    message: str = Form(...),
-    current_user: models.Admin = Depends(auth.get_current_user),
-    db: Session = Depends(get_db) ,
-    file: UploadFile = File(None),
-    
-    
-):
-    """
-    Real-time streaming chat endpoint.
-    """
-    thread = db.query(models.Thread).filter(models.Thread.uuid == thread_id,
-        models.Thread.admin_id == current_user.id).first()
-    if not thread:
-        raise HTTPException(status_code=404, detail="Thread not found")
-    
-
-    # Handle file upload - only 1 file per thread
-    temp_file_path = None
-    if file and file.filename:
-        import os
-        
-        # Clear existing cache for this thread (only 1 file allowed)
-        if thread_id in file_cache:
-            for old_hash, old_path in file_cache[thread_id].items():
-                if old_path and os.path.exists(old_path):
-                    try:
-                        os.remove(old_path)
-                    except Exception as e:
-                        print(f"Failed to remove old file {old_path}: {e}")
-            file_cache[thread_id] = {}
-        else:
-            file_cache[thread_id] = {}
-        
-        # Upload new file
-        file_content = await file.read()
-        file_hash = hashlib.md5(file_content).hexdigest()
-        temp_file_path = f"/tmp/{thread_id}_{file_hash}_{file.filename}"
-        with open(temp_file_path, "wb") as f:
-            f.write(file_content)
-        file_cache[thread_id][file_hash] = temp_file_path
-
-    user_message = message
-    if temp_file_path:
-        user_message += f" [Attached file at {temp_file_path}]"
-    
-
-    async def event_stream():
-        """Generator that yields SSE."""
-        
-        admin_username = current_user.username
-        if not admin_username:
-            raise HTTPException(status_code=404, detail="unable to retrieve admin username")
-
-            
-
-        try:
-            yield f"data: {json.dumps({'type': 'start', 'thread_id': thread_id})}\n\n"
-
-            main_agent = await get_main_agent()
-            async for event in main_agent.astream_events(
-                    {"messages": [{"role": "user", "content": user_message}] , "thread_id": thread_id, },
-                    config={"configurable": {"thread_id": thread_id}},
-                    version="v2",
-                    context=Context(user_id=admin_username , thread_id=thread_id),
-                ):
-
-                kind = event["event"]
-
-                if kind == "on_chat_model_stream":
-                    content = event["data"]["chunk"].content
-                    if content:
-                        content_str = ""
-                        if isinstance(content, list):
-                            content_str = "".join(str(item.get("text", item)) if isinstance(item, dict) else str(item) for item in content)
-                        else:
-                            content_str = str(content)
-                        yield f"data: {json.dumps({'type': 'content', 'content': content_str})}\n\n"
-
-                elif kind == "on_chain_end":
-                    tokens_data = {}
-                    output = event.get("data", {}).get("output")
-                    if output and isinstance(output, dict) and "messages" in output:
-                        for msg in output["messages"]:
-                            if hasattr(msg, "usage_metadata"):
-                                usage = msg.usage_metadata
-                                tokens_data = {
-                                    "total_tokens": usage.get("total_tokens"),
-                                    "input_tokens": usage.get("input_tokens"),
-                                    "output_tokens": usage.get("output_tokens"),
-                                    "cache_tokens": usage.get("input_token_details", {}).get("cache_read")
-                                }
-                                break
-                    yield f"data: {json.dumps({'type': 'end', 'tokens': tokens_data})}\n\n"
-
-        except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e), 'thread_id': thread_id})}\n\n" 
-
-    return StreamingResponse(
-        event_stream(), 
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
-    )   
-
-
-
-
-
-@router.post("/stream_response_tools/{thread_id}")
-async def stream_chat(
-    thread_id: str, 
-    message: str = Form(...),
-    file: UploadFile = File(None),
-    current_user: models.Admin = Depends(auth.get_current_user),
-    db: Session = Depends(get_db) 
-    
-):
-    """
-    Real-time streaming chat endpoint.
-    """
-    thread = db.query(models.Thread).filter(models.Thread.uuid == thread_id,
-        models.Thread.admin_id == current_user.id).first()
-    if not thread:
-        raise HTTPException(status_code=404, detail="Thread not found")
-    
-    # Handle file upload - only 1 file per thread
-    temp_file_path = None
-    if file and file.filename:
-        import os
-        
-        # Clear existing cache for this thread (only 1 file allowed)
-        if thread_id in file_cache:
-            for old_hash, old_path in file_cache[thread_id].items():
-                if old_path and os.path.exists(old_path):
-                    try:
-                        os.remove(old_path)
-                    except Exception as e:
-                        print(f"Failed to remove old file {old_path}: {e}")
-            file_cache[thread_id] = {}
-        else:
-            file_cache[thread_id] = {}
-        
-        # Upload new file
-        file_content = await file.read()
-        file_hash = hashlib.md5(file_content).hexdigest()
-        temp_file_path = f"/tmp/{thread_id}_{file_hash}_{file.filename}"
-        with open(temp_file_path, "wb") as f:
-            f.write(file_content)
-        file_cache[thread_id][file_hash] = temp_file_path
-
-    user_message = message
-    if temp_file_path:
-        user_message += f" [Attached file at {temp_file_path}]"
-
-
-    async def event_stream():
-        """Generator that yields SSE."""
-        
-        admin_username = current_user.username
-        if not admin_username:
-            raise HTTPException(status_code=404, detail="unable to retrieve admin username")
-
-            
-
-        try:
-            yield f"data: {json.dumps({'type': 'start', 'thread_id': thread_id})}\n\n"
-
-            main_agent = await get_main_agent()
-            async for event in main_agent.astream_events(
-                    {"messages": [{"role": "user", "content": user_message}] , "thread_id": thread_id, },
-                    config={"configurable": {"thread_id": thread_id}},
-                    version="v2",
-                    context=Context(user_id=admin_username),
-                ):
-
-                kind = event["event"]
-
-                if kind == "on_chat_model_stream":
-                    content = event["data"]["chunk"].content
-                    if content:
-                        content_str = ""
-                        if isinstance(content, list):
-                            content_str = "".join(str(item.get("text", item)) if isinstance(item, dict) else str(item) for item in content)
-                        else:
-                            content_str = str(content)
-                        yield f"data: {json.dumps({'type': 'content', 'content': content_str})}\n\n"
-
-                elif kind == "on_tool_start":
-                    yield f"data: {json.dumps({'type': 'tool_start', 'tool': event['name']})}\n\n"
-
-                elif kind == "on_tool_end":
-                    output = str(event["data"].get("output", ""))[:200]
-                    yield f"data: {json.dumps({'type': 'tool_end', 'tool': event['name'], 'output': output})}\n\n"
-
-                elif kind == "on_chain_end":
-                    tokens_data = {}
-                    output = event.get("data", {}).get("output")
-                    if output and isinstance(output, dict) and "messages" in output:
-                        for msg in output["messages"]:
-                            if hasattr(msg, "usage_metadata"):
-                                usage = msg.usage_metadata
-                                tokens_data = {
-                                    "total_tokens": usage.get("total_tokens"),
-                                    "input_tokens": usage.get("input_tokens"),
-                                    "output_tokens": usage.get("output_tokens"),
-                                    "cache_tokens": usage.get("input_token_details", {}).get("cache_read")
-                                }
-                                break
-                    yield f"data: {json.dumps({'type': 'end', 'tokens': tokens_data})}\n\n"
-
-        except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e), 'thread_id': thread_id})}\n\n"
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
-    )
-
-
-
-
-
-    
-
-
-
-
+@router.get("/health")
+async def health_check():
+    """Check WebSocket server health."""
+    return {
+        "status": "healthy",
+        "websocket_server": "running on port 8071",
+        "upload_dir_exists": os.path.exists("/tmp/ws_uploads")
+    }

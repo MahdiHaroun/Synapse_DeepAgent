@@ -1,15 +1,16 @@
-from PyPDF2 import PdfReader
 import os
-from langchain_core.tools import tool, InjectedToolCallId 
+from langchain_core.tools import tool
 from langchain.tools import ToolRuntime
-from langchain_core.messages import ToolMessage
 from langgraph.prebuilt import InjectedState
-from langgraph.types import Command
-from typing import Annotated
+from typing import Annotated, List
 from src.States.state import DeepAgentState
 from src.MainAgent.tools.memory_tools import Context
-import boto3
+from src.embedding.embedding import titan_embed_v1
+from src.LLMs.GroqLLMs.llms import groq_gpt_oss_llm
 from dotenv import load_dotenv
+from langchain_community.vectorstores import FAISS
+from Backend.api.database import sessionLocal
+from Backend.api import models
 load_dotenv("/app/.env")
 
 
@@ -28,7 +29,8 @@ async def create_pdf_file(
     runtime: ToolRuntime[Context],
     content: str,
     image_s3_keys: list = None,  # now expects S3 keys like "thread_id/file.png"
-    bucket_name: str = "synapse-openapi-schemas"
+    bucket_name: str = "synapse-openapi-schemas" ,
+
 ) -> dict:
     """
     Create a UTF-8 PDF file from text + multiple images from S3,
@@ -113,137 +115,139 @@ async def create_pdf_file(
 
 
 
-@tool
-async def list_cached_files(state: Annotated[DeepAgentState, InjectedState]) -> str:
-    """List all files currently cached in memory from this conversation."""
-    cached_files = state.get("files", {})
-    if not cached_files:
-        return "No files cached yet."
-    
-    file_list = []
-    for key, content in cached_files.items():
-        size = len(content)
-        if key.startswith("image_analysis_"):
-            file_list.append(f" {key} ({size} chars) - Image analysis result")
-        else:
-            file_list.append(f" {key} ({size} chars)")
-    
-    return "Cached files in this conversation:\n" + "\n".join(file_list)
+
+
 
 
 @tool
-async def get_cached_file(
-    filename: str,
-    state: Annotated[DeepAgentState, InjectedState]
+async def search_retrieve_faiss(
+    runtime: ToolRuntime[Context],
+    question: str,
+    file_id: str = None
 ) -> str:
-    """Retrieve a previously cached file content."""
-    cached_files = state.get("files", {})
+    """
+    Search the FAISS vector store for relevant document chunks related to the question.
+
+    Args:
+        question: The user's question
+        file_id: Optional - Specific file ID to search. If None, searches all files in context.
+
+    Returns:
+        Answer based on the retrieved document chunks.
+        
+    Usage:
+        - For general questions: Leave file_id as None (searches all added files)
+        - For specific file: Provide the file_id (useful for comparisons)
+        - For comparing files: Call this multiple times with different file_ids
+    """
+    thread_id = runtime.context.thread_id
+    all_file_ids = runtime.context.files_ids
+
+    if not all_file_ids:
+        return "No documents have been added to this conversation yet. Please add documents first."
+
+    db = FAISS.load_local(
+        f"faiss/{thread_id}",
+        titan_embed_v1,
+        allow_dangerous_deserialization=True
+    )
+
+    # Search with higher k to ensure we get relevant chunks
+    docs = db.similarity_search(question, k=15)
     
-    # Try exact match first
-    if filename in cached_files:
-        return cached_files[filename]
+    # Filter by file_id(s)
+    if file_id:
+        # Search only in specific file
+        filtered_docs = [
+            d for d in docs 
+            if d.metadata.get("file_id") == file_id
+        ]
+        context_msg = f"file ID: {file_id}"
+    else:
+        # Search across all added files
+        filtered_docs = [
+            d for d in docs 
+            if d.metadata.get("file_id") in all_file_ids
+        ]
+        context_msg = f"all {len(all_file_ids)} added file(s)"
     
-    # Try partial match for image analysis
-    for key, content in cached_files.items():
-        if filename in key:
-            return content
+    if not filtered_docs:
+        return f"No relevant information found in {context_msg} for this question."
+        
+    context = "\n\n".join(d.page_content for d in filtered_docs[:5])  # Use top 5 most relevant
+
+    prompt = f"""
+Use ONLY the context below to answer the question.
+If the answer is not present in the context, say "I don't know based on the provided documents".
+
+Context from documents:
+{context}
+
+Question:
+{question}
+
+Answer:"""
+
+    return groq_gpt_oss_llm.invoke(prompt).content
+
+
+
+def get_all_chunks(db: FAISS, file_id: str):
+    """Retrieve all document chunks for a given file ID from the FAISS vector store."""
+    # Get all documents from the vector store
+    all_docs = db.docstore._dict.values()
     
-    return f"File '{filename}' not found in cache. Use list_cached_files to see available files."
+    # Filter by file_id in metadata
+    file_docs = [
+        doc for doc in all_docs 
+        if doc.metadata.get("file_id") == file_id
+    ]
+    
+    return file_docs
 
 
 @tool
-async def read_pdf_file(
-    temp_file_path: str,
+async def summarize_file(
+    runtime: ToolRuntime[Context],
     state: Annotated[DeepAgentState, InjectedState],
-    tool_call_id: Annotated[str, InjectedToolCallId]
-) -> Command:
-    """Extract text from a PDF file and cache in state for reuse. Reject if more than 5 pages."""
-    # Check if already cached
-    filename = os.path.basename(temp_file_path)
-    cached_files = state.get("files", {})
+    file_id: str 
+):
+    """
+    Use ONLY when the user asks to summarize, overview, or TL;DR a file.
+    This tool reads the entire file and produces a full summary.
     
-    if filename in cached_files:
-        return Command(
-            update={"messages": [ToolMessage(f"Using cached content from {filename}\n\n{cached_files[filename]}", tool_call_id=tool_call_id)]}
-        )
-    
-    # Extract text
-    reader = PdfReader(temp_file_path)
-    num_pages = len(reader.pages)
+    The file_id should be one of the files added to this conversation.
+    """
 
-    if num_pages > 5:
-        raise ValueError(f"PDF has {num_pages} pages, but the limit is 5.")
+    thread_id = runtime.context.thread_id
+    file_id = file_id
 
-    text = ""
-    for page in reader.pages:
-        extracted = page.extract_text()
-        if extracted:
-            text += extracted + "\n"
 
-    content = text.strip()
-    
-    # Cache in state for reuse
-    return Command(
-        update={
-            "files": {filename: content},
-            "messages": [ToolMessage(f"Extracted and cached {num_pages} pages from {filename}\n\n{content}", tool_call_id=tool_call_id)]
-        }
+
+    db = FAISS.load_local(
+        f"faiss/{thread_id}",
+        titan_embed_v1,
+        allow_dangerous_deserialization=True
     )
 
+    docs = get_all_chunks(db, file_id)
 
+    if not docs:
+        return "No content found for this file."
 
-
-@tool
-async def read_text_file(
-    temp_file_path: str,
-    state: Annotated[DeepAgentState, InjectedState],
-    tool_call_id: Annotated[str, InjectedToolCallId]
-) -> Command:
-    """Read and cache text file content for reuse."""
-    filename = os.path.basename(temp_file_path)
-    cached_files = state.get("files", {})
-    
-    if filename in cached_files:
-        return Command(
-            update={"messages": [ToolMessage(f"Using cached content from {filename}\n\n{cached_files[filename]}", tool_call_id=tool_call_id)]}
+    # ---- MAP ----
+    partial = []
+    for doc in docs:
+        partial.append(
+            groq_gpt_oss_llm.invoke(
+                f"Summarize this text:\n{doc.page_content}"
+            ).content
         )
-    
-    with open(temp_file_path, "r", encoding="utf-8") as f:
-        content = f.read()
-    
-    return Command(
-        update={
-            "files": {filename: content},
-            "messages": [ToolMessage(f"Cached {filename}\n\n{content}", tool_call_id=tool_call_id)]
-        }
-    )
 
+    # ---- REDUCE ----
+    final = groq_gpt_oss_llm.invoke(
+        "Combine these summaries into one coherent summary:\n"
+        + "\n".join(partial)
+    ).content
 
-@tool
-async def read_excel_file(
-    temp_file_path: str,
-    state: Annotated[DeepAgentState, InjectedState],
-    tool_call_id: Annotated[str, InjectedToolCallId]
-) -> Command:
-    """Read an Excel file and cache its content as CSV string for reuse."""
-    import pandas as pd
-    
-    filename = os.path.basename(temp_file_path)
-    cached_files = state.get("files", {})
-    
-    if filename in cached_files:
-        return Command(
-            update={"messages": [ToolMessage(f"Using cached content from {filename}\n\n{cached_files[filename]}", tool_call_id=tool_call_id)]}
-        )
-    
-    df = pd.read_excel(temp_file_path)
-    content = df.to_csv(index=False)
-    
-    return Command(
-        update={
-            "files": {filename: content},
-            "messages": [ToolMessage(f"Cached Excel data from {filename}\n\n{content}", tool_call_id=tool_call_id)]
-        }
-    )
-
-
+    return final

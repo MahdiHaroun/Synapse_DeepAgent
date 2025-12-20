@@ -2,8 +2,13 @@ from mcp.server.fastmcp import FastMCP
 import boto3
 from botocore.exceptions import ClientError
 import os
-
+from dotenv import load_dotenv
+from pathlib import Path
 mcp = FastMCP("S3" , host="0.0.0.0", port=3000)
+
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
+load_dotenv(env_path)
+
 
 os.environ["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_ACCESS_KEY_ID")
 os.environ["AWS_SECRET_ACCESS_KEY"] = os.getenv("AWS_SECRET_ACCESS_KEY")

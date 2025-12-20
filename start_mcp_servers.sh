@@ -64,6 +64,9 @@ $PYTHON_CMD -m Backend.mcp.web_server.server &
 echo "🚀 Starting RAG Service Server..."
 $PYTHON_CMD -m Backend.mcp.rag_server.server &
 
+echo "Starting Scheduler Server..."
+$PYTHON_CMD -m Backend.mcp.schedule_server.server &
+
 echo ""
 echo "✅ All servers started!"
 echo "📝 Server endpoints:"

@@ -1,0 +1,14 @@
+- name: schedular_agent
+  description: Handles scheduling tasks such as sending emails at specified times and schedular_jobs 
+  tools:
+  - send_email_from_schedule_jobs
+
+
+
+
+
+
+
+
+
+

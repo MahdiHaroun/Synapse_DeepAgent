@@ -6,8 +6,12 @@ from dotenv import load_dotenv
 from pathlib import Path
 import os
 
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
+load_dotenv(env_path)
 
-load_dotenv("/app/.env")
+
+
+#load_dotenv("/app/.env")
 
 
 """

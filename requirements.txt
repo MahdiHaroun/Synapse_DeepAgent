@@ -60,3 +60,13 @@ langchain
 langchain-aws
 langgraph-checkpoint-mongodb
 langgraph-store-mongodb
+apscheduler
+pytz
+langchain_openai
+websockets
+aiofiles 
+pillow 
+pyjwt
+redis
+faiss-cpu
+langchain-text-splitters

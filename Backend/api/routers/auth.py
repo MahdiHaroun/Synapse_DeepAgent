@@ -10,7 +10,7 @@ router = APIRouter(prefix="/admins", tags=["Authentication"])
 
 mongo_uri = os.getenv("MONGODB_URI")
 mongo_client = MongoClient(mongo_uri)
-mongo_db = mongo_client["Synapse_admins_info"]  # Same DB as agent uses
+mongo_db = mongo_client["Synapse_admins_info"] 
 
 
 def save_user_info(user_info: dict, admin_username: str) -> str:
@@ -26,7 +26,7 @@ def save_user_info(user_info: dict, admin_username: str) -> str:
         print(f"DEBUG: user_info: {user_info}")
         print(f"DEBUG: store type: {type(store)}")
         
-        # Store data in the store (namespace, key, data) - synchronous call
+        
         store.put(("users",), user_id, user_info)
         
         return "Successfully saved user info."

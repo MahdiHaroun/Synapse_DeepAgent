@@ -1,5 +1,5 @@
 from langchain.tools import tool 
-from Synapse_RAG.embedding.embedding import titan_embed_v1
+from Backend.mcp.rag_server.Synapse_RAG.embedding.embedding import titan_embed_v1
 from pymongo import MongoClient
 import os
 import yaml

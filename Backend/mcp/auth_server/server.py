@@ -7,7 +7,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load .env from mounted volume
-load_dotenv("/app/.env")
+#load_dotenv("/app/.env")
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
+load_dotenv(env_path)
 
 
 """
@@ -49,6 +51,7 @@ async def send_otp(action: str):
             "to": "mahdiharoun44@gmail.com",
             "subject": action,
             "html": f"<p>Your OTP code to perform {action} is: <strong>{otp}</strong></p>"
+            
         })
     
     return {"status": "OTP sent"}

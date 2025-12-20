@@ -254,6 +254,7 @@ You have full access to Gmail operations:
 
 **IMPORTANT**: Always validate email format before sending
 
+
 """
 AWS_S3_AGENT_INSTRUCTIONS = """
 you manage aws s3 operation including read from files , lsiting buckets and listing objects
@@ -512,37 +513,69 @@ always ask the aws s3 agent for any s3_keys you need to read from or write to s3
 DOCUMENTS_TOOL_DESCRIPTION = """Tools for reading and processing document files to extract and utilize their content effectively.
 
 **Available Tools:**
-1. read_text_file: Read text file content (automatically cached for reuse)
-2. read_excel_file: Read Excel file and return as CSV string
+1. summarize_file: Summarize content of PDF or text file by file_id
+2. search_retrieve_faiss: Search and retrieve relevant info from documents added to this conversation
 3. create_pdf_file: Create PDF from text, upload to S3, return presigned download link
-4. read_pdf_file: Extract text from PDF (automatically cached for reuse)
-5. list_all_files: List all files available in the files container 
-7. list_cached_files: See all files cached in this conversation
-8. get_cached_file: Retrieve previously cached file content
+4. list_cached_files: See all files cached in this conversation
+5. get_cached_file: Retrieve previously cached file content
 
-**CACHING BEHAVIOR:**
-- Files are automatically cached after first read (PDFs, text files, images)
-- Follow-up questions about same file use cached content (instant, no re-reading)
-- User can reference multiple files throughout conversation
-- Use list_cached_files to see what's available
-- Use get_cached_file to retrieve without re-reading from disk
+**FILE CONTEXT SYSTEM:**
+The user's message will include an [AVAILABLE FILES] section showing:
+- File number, type, name, and ID for each file in the conversation
+- Multiple files are numbered (1, 2, 3, etc.)
+- Each file has a unique file_id you can use
+
+**HANDLING DIFFERENT SCENARIOS:**
+
+1. **Single File Questions:**
+   - User: "What is this document about?"
+   - Action: Use search_retrieve_faiss (automatically uses all available files)
+   
+2. **Multiple Files - General:**
+   - User: "Summarize all the documents"
+   - Action: Call summarize_file for EACH file_id separately, then combine results
+   
+3. **Comparison Between Files:**
+   - User: "Compare document 1 and document 2" or "What are the differences?"
+   - Action: 
+     a) Search/summarize each file separately using their file_ids
+     b) Analyze both results
+     c) Provide comparison highlighting similarities and differences
+   
+4. **Specific File Reference:**
+   - User: "What does document 2 say about X?" or "Summarize the first file"
+   - Action: Use the file_id for that specific numbered document
+   
+5. **Mixed Content (PDFs + Images):**
+   - PDFs: Use search_retrieve_faiss or summarize_file
+   - Images: Use analyze_image tool (images cached automatically)
+   - Combined: Analyze each type with appropriate tool, then synthesize
+
+**IMPORTANT RULES:**
+- ALWAYS check the [AVAILABLE FILES] section in the user's message
+- When multiple files present and user is vague, ask which file OR analyze all
+- For "compare" requests: Explicitly process each file then compare
+- File numbers (1, 2, 3) correspond to the order shown in [AVAILABLE FILES]
+- search_retrieve_faiss automatically searches across ALL added files
+
+**CACHING:**
+- Summaries cached by file_id (instant reuse)
+- Image analysis cached (no re-processing)
+- Use list_cached_files to see what's already processed
 """
 
-IMAGE_ANALYSIS_TOOL_DESCRIPTION = """Tools for analyzing images to extract meaningful information and insights.
 
-**Available Tool:**
-1. analyze_image: Analyze image and return description (results cached for reuse)
 
-**CACHING BEHAVIOR:**
-- Image analysis results are automatically cached
-- Same question about same image = instant cached response
-- Different questions trigger new analysis
-- Check cache with list_cached_files before re-analyzing
+IMAGE_ANALYSIS_TOOL_DESCRIPTION = """
+Tools for analyzing and extracting information from images.
 
-**Usage:**
-- Always use check_file_exists first to verify image path
-- Results cached as: image_analysis_{filename}_{question}
+for image task just get the image_file_id from the context the user will provide it 
+and the use the tool : summarize_file 
+to get the summary of the image
+after this move with the task 
 """
+
+
 
 WEB_SEARCH_AGENT_INSTRUCTIONS = """
 You are the Web Search Agent. Your primary function is to gather information from the web here is today 's date : {date}. 
@@ -574,3 +607,27 @@ you must return it to the user with clear instructions on what to do with it
 example : here is your authentication url , please visit it to authenticate your google calendar account : {url}
 or here is your presigned download url : {url} 
 """
+
+
+SCHADULE_JOBS_INSTRUCTIONS = """
+If you recived a prompot exactly starting with "Scheduled Job:" this means you are reciving a scheduled job to execute on behalf of the user.
+you must follow these instructions when executing scheduled jobs :
+
+1. you must start the job task by task 
+2. if job requires sending an email with attachment you must use the scheduler_agent subagent and you must provide it with the presigned_url of the attachment if there 
+is any attachment 
+
+**CRITICAL RULES:**
+- you msut tell the subagent " this is a scheduled job " in the task description when delegating to it
+"""
+
+
+
+SCHEDULE_AGENT_INSTRUCTIONS = """
+IMPORTANT: When sending emails with PDF attachments:
+1. If given an s3_key like "schedule/abc123.pdf", pass it directly to send_email_from_schedule_jobs
+2. The s3_key format should be: "{thread_id}/{filename}.pdf"
+3. Example: s3_key="schedule/5b5e01795ab147beb16fd3aa3d27307e.pdf"
+4. The tool will automatically download from S3 bucket "synapse-openapi-schemas"
+    
+    """

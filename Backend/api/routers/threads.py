@@ -7,7 +7,13 @@ from Backend.api import models,  auth
 import boto3
 from dotenv import load_dotenv
 import os
-load_dotenv("Backend/api/.env")
+import datetime 
+from pathlib import Path
+#load_dotenv("Backend/api/.env")
+
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
+load_dotenv(env_path)
+
 
 os.environ["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_ACCESS_KEY_ID")
 os.environ["AWS_SECRET_ACCESS_KEY"] = os.getenv("AWS_SECRET_ACCESS_KEY")

@@ -14,14 +14,19 @@ from email import encoders
 import mimetypes
 import io
 import boto3
+import resend
 
 # Load .env from mounted volume
-load_dotenv("/app/.env")
+#load_dotenv("/app/.env")
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
+load_dotenv(env_path)
 
 
 os.environ["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_ACCESS_KEY_ID")
 os.environ["AWS_SECRET_ACCESS_KEY"] = os.getenv("AWS_SECRET_ACCESS_KEY")
 os.environ["AWS_DEFAULT_REGION"] = os.getenv("AWS_DEFAULT_REGION")
+os.environ["RESEND_API_KEY"] = os.getenv("RESEND_API_KEY")
+print(f"RESEND_API_KEY loaded strarting with: {os.getenv('RESEND_API_KEY')[:5]}...")
 
 """
 env_path = Path(__file__).parent.parent.parent.parent / ".env"
@@ -556,6 +561,9 @@ async def download_attachment(message_id: str, attachment_id: str, save_path: st
                 return {"error": f"Failed to save file: {str(e)}"}
         else:
             return {"error": response.text}
+
+
+
 
 
 # Run the server

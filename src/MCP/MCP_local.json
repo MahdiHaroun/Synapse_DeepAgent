@@ -31,6 +31,10 @@
     "rag-service": {
       "url": "http://localhost:3010/sse",
       "transport": "sse"
+    },
+    "scheduler": {
+      "url": "http://localhost:3070/sse",
+      "transport": "sse"
     }
   }
 }

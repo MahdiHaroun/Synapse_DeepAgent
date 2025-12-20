@@ -81,5 +81,59 @@ class ThreadOut(BaseModel):
 class ProtocolCreate(BaseModel):
     sequence_description: str
 
+
+class ScheduledTaskCreate(BaseModel):
+    task_name: str = Field(..., description="Name of the scheduled task")
+    task_type: str = Field(..., description="Type: 'cron', 'interval', or 'one_time'")
+    task_description: Optional[str] = Field(None, description="Description of what the task does")
+    
+    # For cron tasks
+    cron_expression: Optional[str] = Field(None, description="Cron expression (e.g., '0 9 * * *')")
+    
+    # For interval tasks
+    interval_seconds: Optional[int] = Field(None, description="Interval in seconds")
+    interval_minutes: Optional[int] = Field(None, description="Interval in minutes")
+    interval_hours: Optional[int] = Field(None, description="Interval in hours")
+    
+    # For one_time tasks
+    run_date: Optional[str] = Field(None, description="ISO datetime string for one-time execution")
+    
+    # Task data (what the agent should do)
+    task_data: dict = Field(..., description="Task parameters (e.g., {'prompt': 'Send daily report'})")
+
+
+class ScheduledTaskUpdate(BaseModel):
+    task_name: Optional[str] = None
+    task_description: Optional[str] = None
+    is_active: Optional[bool] = None
+    cron_expression: Optional[str] = None
+    interval_seconds: Optional[int] = None
+    interval_minutes: Optional[int] = None
+    interval_hours: Optional[int] = None
+    run_date: Optional[str] = None
+    task_data: Optional[dict] = None
+
+
+class ScheduledTaskOut(BaseModel):
+    id: int
+    admin_id: int
+    task_name: str
+    task_type: str
+    task_description: Optional[str]
+    cron_expression: Optional[str]
+    interval_seconds: Optional[int]
+    interval_minutes: Optional[int]
+    interval_hours: Optional[int]
+    run_date: Optional[str]
+    task_data: dict
+    is_active: bool
+    created_at: str
+    next_run_at: Optional[str]
+    last_run_at: Optional[str]
+    
+    class Config:
+        from_attributes = True
+
+
     
 

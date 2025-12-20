@@ -4,19 +4,16 @@ from pymongo import MongoClient
 from src.SubAgents.subAgents import task_tool 
 from src.LLMs.GroqLLMs.llms import groq_moonshotai_llm 
 from src.embedding.embedding import titan_embed_v1
+#from src.LLMs.OpenAI_LLMs.llms import openai_gpt4_llm
 #from src.LLMs.AWS_LLMs.llms import sonnet_4_llm
 from src.States.state import DeepAgentState
 from src.MainAgent.tools.todo_tools import write_todos, read_todos , get_current_datetime 
 from src.MainAgent.tools.documents_tools import(
-    read_text_file,
-    read_excel_file,
     create_pdf_file,
-    read_pdf_file,
-    list_cached_files,
-    get_cached_file,
+    summarize_file,
+    search_retrieve_faiss ,
 )
-from src.MainAgent.tools.image_analysis import analyze_image
-from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION  , IMAGE_ANALYSIS_TOOL_DESCRIPTION , TASK_DESCRIPTION_PREFIX , MEMORY_TOOL_INSTRUCTIONS , URLS_PROTOCOL
+from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION  , IMAGE_ANALYSIS_TOOL_DESCRIPTION , TASK_DESCRIPTION_PREFIX , MEMORY_TOOL_INSTRUCTIONS , URLS_PROTOCOL , SCHADULE_JOBS_INSTRUCTIONS
 from langchain.agents import create_agent
 #from langgraph.checkpoint.memory import InMemorySaver 
 from langgraph.checkpoint.mongodb import MongoDBSaver
@@ -51,11 +48,11 @@ class MainAgent:
             collection=self.db["synapse_agent_store"],
             index_config=VectorIndexConfig(
                 dims=1536,
-                embed=titan_embed_v1,  # Use the embedding function
+                embed=titan_embed_v1,  
                 fields=["sequence_protocol"],
-                filters=[]  # No additional filters for now
+                filters=[]  
             ),
-            auto_index_timeout=60  # Increase timeout to 60 seconds for index creation
+            auto_index_timeout=60  #index timeout in seconds
         )
     
     async def main_agent_tools(self):
@@ -65,9 +62,10 @@ class MainAgent:
             get_user_info,
             save_sequence_protocol, search_sequence_protocols,
             get_current_datetime,
-            read_text_file, read_excel_file, create_pdf_file, read_pdf_file,
-            list_cached_files, get_cached_file,
-            analyze_image 
+            create_pdf_file,
+            summarize_file,
+            search_retrieve_faiss,
+
         ] 
         all_tools = delegation_tools + built_in_tools
 
@@ -94,7 +92,9 @@ class MainAgent:
         + "=" * 80
         + "\n\n"
         + "# SUB-AGENT DELEGATION\n"
-        + GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS 
+        + GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS  
+        + "\n\n"
+        + SCHADULE_JOBS_INSTRUCTIONS
         )
         with open("src/Prompts/main_agent_instructions.txt", "w", encoding="utf-8") as f:
             f.write(INSTRUCTIONS)

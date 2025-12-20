@@ -1,24 +1,33 @@
-from dataclasses import dataclass 
+from dataclasses import dataclass
 from typing_extensions import TypedDict 
 from langchain.tools import tool, ToolRuntime
 from langgraph.store.mongodb import MongoDBStore
 import os
 from pymongo import MongoClient
-
+from typing import List
 
 mongo_uri = os.getenv("MONGODB_URI")
 mongo_client = MongoClient(mongo_uri)
 mongo_db = mongo_client["Synapse_admins_info"]  # Same DB as agent uses
 
 
+
+
 @dataclass
 class Context:
     user_id: str
+    user_name: str
     thread_id: str
+    files_ids : List[str] 
+    images_ids: List[str]
+
+
 
 class UserInfo(TypedDict):
     name: str
     email: str
+
+
 
 
 
@@ -32,12 +41,12 @@ def get_user_info(runtime: ToolRuntime[Context]) -> str:
             collection=mongo_db["synapse_agent_store"]
         )
         store = store
-        user_id = runtime.context.user_id
+        user_name = runtime.context.user_name
         
-        print(f"DEBUG: Attempting to get user_info for user_id: {user_id}")
+        print(f"DEBUG: Attempting to get user_info for user_name: {user_name}")
         
         # Retrieve data from store - returns StoreValue object with value and metadata
-        result = store.get(("users",), user_id)
+        result = store.get(("users",), user_name)
         
         print(f"DEBUG: Result from store.get(): {result}")
         return str(result.value) if result else "Unknown user"

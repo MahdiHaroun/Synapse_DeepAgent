@@ -1,9 +1,14 @@
 from mcp.server import FastMCP
-from Synapse_RAG.agent.agent import rag_agent
+#from Synapse_RAG.agent.agent import rag_agent
+from Backend.mcp.rag_server.Synapse_RAG.agent.agent import rag_agent
 from dotenv import load_dotenv
+import os
+from pathlib import Path
 
 # Load .env from mounted volume
-load_dotenv("/app/.env") 
+#load_dotenv("/app/.env") 
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
+load_dotenv(env_path)
 
 
 mcp = FastMCP("rag_server" , host="0.0.0.0", port=3010)

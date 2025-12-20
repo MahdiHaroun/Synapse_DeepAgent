@@ -8,12 +8,16 @@ from prophet import Prophet
 import boto3 
 import io
 from dotenv import load_dotenv
+import os
+from pathlib import Path
 
 mcp = FastMCP("analysis-tools" , host="0.0.0.0", port=3040)
 
 
 
-load_dotenv("/app/.env")
+#load_dotenv("/app/.env")
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
+load_dotenv(env_path)
 
 os.environ["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_ACCESS_KEY_ID")
 os.environ["AWS_SECRET_ACCESS_KEY"] = os.getenv("AWS_SECRET_ACCESS_KEY")
