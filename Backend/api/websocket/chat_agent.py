@@ -25,9 +25,11 @@ async def stream_chat(
     user_id: str,
     user_name: str,
     message: str,
-    file_ids: list
+    file_ids: list, 
+    show_tools_responses: bool = False
 ):
     """Stream chat responses from the main agent with cancellation support."""
+    print(f"[DEBUG] stream_chat called with show_tools_responses={show_tools_responses} (type: {type(show_tools_responses)})")
     try:
         main_agent = await get_main_agent()
         context = Context(
@@ -78,6 +80,18 @@ async def stream_chat(
                     else:
                         content_str = str(content)
                     yield {"type": "content", "content": content_str}
+                
+            elif kind == "on_tool_start":
+                tool_name = event.get("name", "unknown_tool")
+                print(f"[DEBUG] Tool start detected: {tool_name}, show_tools_responses={show_tools_responses}")
+                if show_tools_responses:
+                    yield {"type": "tool_start", "tool_name": tool_name}
+            elif kind == "on_tool_end":
+                tool_name = event.get("name", "unknown_tool")
+                tool_output = event["data"].get("output", "")
+                print(f"[DEBUG] Tool end detected: {tool_name}, show_tools_responses={show_tools_responses}")
+                if show_tools_responses:
+                    yield {"type": "tool_end", "tool_name": tool_name, "output": str(tool_output)}
 
             elif kind == "on_chain_end":
                 output = event.get("data", {}).get("output", {})

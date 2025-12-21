@@ -80,7 +80,7 @@ class MainAgent:
         + TODO_USAGE_INSTRUCTIONS
         + "\n\n"
         + "# TOOLS DESCRIPTION\n"
-        + TASK_DESCRIPTION_PREFIX.format(other_agents="DB_sub_agent , DB_analyzer_agent, EC_agent , AWS_S3_agent , analysis_agent , Calendar_agent, Auth_agent, Web_Search_agent, RAG_agent")
+        + TASK_DESCRIPTION_PREFIX.format(other_agents="Database_Agent, Database_Analyzer_Agent, External_Communication_Agent, AWS_S3_Agent, Analysis_Agent, Calendar_Agent, Auth_Agent, Web_Search_Agent, RAG_Agent, Scheduler_Agent")
         + "\n\n"
         + MEMORY_TOOL_INSTRUCTIONS
         + "\n\n"

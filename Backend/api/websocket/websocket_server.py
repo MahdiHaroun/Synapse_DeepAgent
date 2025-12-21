@@ -142,13 +142,15 @@ async def handle_client(ws):
                     continue
 
                 message = data.get("message")
+                show_tools_responses = data.get("show_tools_responses", False)
 
                 async for chunk in stream_chat(
                     thread_id=context["thread_id"],
                     user_id=context["user_id"],
                     user_name=context["user_name"],
                     message=message,
-                    file_ids=context["file_ids"]
+                    file_ids=context["file_ids"],
+                    show_tools_responses=show_tools_responses
                 ):
                     await ws.send(json.dumps(chunk))
                     
