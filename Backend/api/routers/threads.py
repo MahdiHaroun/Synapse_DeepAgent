@@ -148,6 +148,18 @@ async def delete_thread(
             print(f"Deleted {delete_checkpoints.deleted_count} checkpoints and {delete_writes.deleted_count} checkpoint writes for thread {thread_id} from MongoDB.")
     except Exception as e:
         print(f"MongoDB cleanup failed for thread {thread_id}: {e}")
+    #---- FAISS cleanup ----
+    try:
+        import shutil
+        faiss_path = f"faiss/{thread_id}"
+        if os.path.exists(faiss_path):
+            if os.path.isdir(faiss_path):
+                shutil.rmtree(faiss_path)
+            else:
+                os.remove(faiss_path)
+            print(f"Deleted FAISS directory for thread {thread_id}")
+    except Exception as e:
+        print(f"FAISS cleanup failed for thread {thread_id}: {e}")
 
     return {
         "detail": "Thread deleted successfully"
@@ -213,6 +225,20 @@ async def delete_all_threads(
             print(f"Deleted {delete_checkpoints.deleted_count} checkpoints and {delete_writes.deleted_count} checkpoint writes for all threads from MongoDB.")
         except Exception as e:
             print(f"MongoDB cleanup failed: {e}")
+
+    # ---- FAISS cleanup for all threads ----
+    try:
+        import shutil
+        for thread_id in thread_ids:
+            faiss_path = f"faiss/{thread_id}"
+            if os.path.exists(faiss_path):
+                if os.path.isdir(faiss_path):
+                    shutil.rmtree(faiss_path)
+                else:
+                    os.remove(faiss_path)
+                print(f"Deleted FAISS directory for thread {thread_id}")
+    except Exception as e:
+        print(f"FAISS cleanup failed: {e}")
 
     return {
         "detail": "All threads are deleted successfully " + ("and S3 objects removed." if threads else ".")
