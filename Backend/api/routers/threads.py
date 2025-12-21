@@ -7,7 +7,6 @@ from Backend.api import models,  auth
 import boto3
 from dotenv import load_dotenv
 import os
-import datetime 
 from pathlib import Path
 #load_dotenv("Backend/api/.env")
 

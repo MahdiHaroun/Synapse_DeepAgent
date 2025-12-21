@@ -1,7 +1,6 @@
 from mcp.server.fastmcp import FastMCP
 import random 
 import resend
-import datetime
 import os
 from pathlib import Path
 from dotenv import load_dotenv
