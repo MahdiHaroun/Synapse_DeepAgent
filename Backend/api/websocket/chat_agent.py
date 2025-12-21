@@ -3,7 +3,22 @@ from Backend.api.websocket.redis_cancel import is_cancelled
 from src.MainAgent.agent import get_main_agent
 from Backend.api.database import get_db
 from Backend.api.models import UploadedFiles
+from Backend.api.database import sessionLocal
+from Backend.api import models
 
+
+
+async def update_thread_last_active(thread_id: str):
+    """Update the last_active timestamp of a thread to the current time."""
+    db = next(get_db())
+    try:
+        thread = db.query(models.Thread).filter(models.Thread.uuid == thread_id).first()
+        if thread:
+            from datetime import datetime
+            thread.last_interaction = datetime.utcnow()
+            db.commit()
+    finally:
+        db.close()
 
 async def stream_chat(
     thread_id: str,
@@ -75,6 +90,13 @@ async def stream_chat(
                     elif "token_usage" in output:
                         tokens = output["token_usage"]
                 yield {"type": "end", "tokens": tokens}
-    
+
+        
     except Exception as e:
         yield {"type": "error", "message": f"Chat error: {str(e)}"}
+
+    finally:
+        await update_thread_last_active(thread_id)
+
+        
+        
