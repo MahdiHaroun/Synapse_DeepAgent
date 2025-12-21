@@ -28,18 +28,15 @@ async def stream_chat(
         if file_ids:
             db = next(get_db())
             try:
-                files_info = []
+                files_ids = []
                 for idx, file_id in enumerate(file_ids, 1):
                     file = db.query(UploadedFiles).filter(UploadedFiles.file_id == file_id).first()
                     if file:
-                        file_type = file.filename.split('.')[-1].upper() if '.' in file.filename else 'UNKNOWN'
-                        files_info.append(f"  {idx}. [{file_type}] {file.filename}\n     File ID: {file_id}")
-                    else:
-                        files_info.append(f"  {idx}. Unknown file\n     File ID: {file_id}")
+                        file
                 
-                if files_info:
-                    file_count = len(files_info)
-                    file_context = f"\n\n{'='*60}\n[AVAILABLE FILES IN THIS CONVERSATION: {file_count} file(s)]\n" + "\n".join(files_info) + f"\n{'='*60}\n\nIMPORTANT: When user asks about 'the document', 'this file', 'the PDF', they refer to these files above.\n- For questions about content: Use search_retrieve_faiss (auto-uses all files)\n- For summarization: Use summarize_file with specific file_id\n- For comparison: Search each file separately and compare results\n- Multiple files: You can analyze all of them together or individually\n"
+                if files_ids:
+                    file_context = "\n\nThe user has uploaded the following files for context:\n" + "\n".join(files_ids)
+                    
             finally:
                 db.close()
         

@@ -105,7 +105,7 @@ async def handle_client(ws):
                 context = {
                     "thread_id": thread_id,
                     "file_ids": file_ids,
-                    "user_id": user_id,
+                    "user_id": str(user_id),  # Convert to string for Context
                     "user_name": user_name
                 }
 
@@ -115,23 +115,22 @@ async def handle_client(ws):
                     "file_ids": file_ids
                 }))
 
-            # ===== ADD FILE =====
-            #elif action == "add_file":
-                #file_id = data.get("file_id")
+            #===== ADD FILE =====
+            elif action == "add_file":
+                file_id = data.get("file_id")
 
-                #if not context:
-                    #await ws.send(json.dumps({
-                        #"type": "error",
-                        #"message": "Thread not initialized"
-                  # }))
-                    #continue
+                if not context:
+                    await ws.send(json.dumps({
+                        "type": "error",
+                        "message": "Thread not initialized"
+                  }))
+                    continue
+                context["file_ids"].append(file_id)
 
-                #context["file_ids"].append(file_id)
-
-                #await ws.send(json.dumps({
-                   # "type": "file_added",
-                    #"file_id": file_id
-                #}))
+                await ws.send(json.dumps({
+                    "type": "file_added",
+                    "file_id": file_id
+                }))
 
             # ===== CHAT =====
             elif action == "chat":

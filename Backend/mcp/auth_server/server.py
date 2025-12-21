@@ -5,54 +5,54 @@ import datetime
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import redis 
 
 # Load .env from mounted volume
 #load_dotenv("/app/.env")
 env_path = Path(__file__).parent.parent.parent.parent / ".env"
 load_dotenv(env_path)
 
+# Initialize Redis client
+redis_client = redis.Redis(host='127.0.0.1', port=6379, db=0, decode_responses=True)
 
-"""
-env_path = Path(__file__).parent.parent.parent.parent / ".env"
-load_dotenv(env_path)
-
-"""
 # Initialize Resend API key
 resend.api_key = os.getenv("RESEND_API_KEY")
 
 mcp = FastMCP("Auth" , host="0.0.0.0", port=3060)
 
-otp_storage = {}   # email -> {"otp":1234, "expires":datetime}
 
 def generate_otp():
     return random.randint(100000, 999999)
+
+
 @mcp.tool()
 async def clear_all_otps():
     """Clear all stored OTPs (for testing purposes)"""
-    otp_storage.clear()
-    return {"status": "All OTPs cleared"}
+    # Delete all keys matching otp:*
+    keys = redis_client.keys("otp:*")
+    if keys:
+        redis_client.delete(*keys)
+    return {"status": f"Cleared {len(keys)} OTPs from Redis"}
 
 @mcp.tool()
 async def send_otp(action: str):
-    """Generate and send OTP to user's email (simulated)"""
+    """Generate and send OTP to user's email"""
+    
     email = "mahdiharoun44@gmail.com"
     otp = generate_otp()
-    expires = datetime.datetime.utcnow() + datetime.timedelta(minutes=1)
-
-    otp_storage[email] = {
-        "otp": otp,
-        "expires": expires
-    }
+    
+    # Store in Redis with 5 minute expiration
+    redis_key = f"otp:{email}"
+    redis_client.setex(redis_key, 300, str(otp))  # 300 seconds TTL
+    
     print(f"Sending OTP {otp} to email {email}") 
      
-            
     resend.Emails.send({
-            "from": "noreply@optichoice.me",
-            "to": "mahdiharoun44@gmail.com",
-            "subject": action,
-            "html": f"<p>Your OTP code to perform {action} is: <strong>{otp}</strong></p>"
-            
-        })
+        "from": "noreply@optichoice.me",
+        "to": [email],
+        "subject": action,
+        "html": f"<p>Your OTP code to perform {action} is: <strong>{otp}</strong></p>"
+    })
     
     return {"status": "OTP sent"}
 
@@ -70,22 +70,14 @@ def verify_otp(otp: str, email: str = "mahdiharoun44@gmail.com") -> dict:
         dict: Verification result with verified status and reason
     """
     print(f"Verifying OTP for {email}: {otp}")
-    print(f"Current OTP storage: {otp_storage}")
     
-    if email not in otp_storage:
-        return {"verified": False, "reason": f"No OTP generated for {email}. Please request OTP first using send_otp."}
-
-    data = otp_storage[email]
+    redis_key = f"otp:{email}"
+    stored_otp = redis_client.get(redis_key)
     
-    current_time = datetime.datetime.utcnow()
-    print(f"Current time: {current_time}, Expires: {data['expires']}")
-
-    if current_time > data["expires"]:
-        del otp_storage[email]
-        return {"verified": False, "reason": "OTP expired. Please request a new OTP."}
+    if not stored_otp:
+        return {"verified": False, "reason": f"No OTP found for {email}. Please request OTP first using send_otp or OTP expired."}
 
     # Convert both to string for comparison and strip whitespace
-    stored_otp = str(data["otp"])
     provided_otp = str(otp).strip()
     
     if stored_otp != provided_otp:
@@ -93,7 +85,7 @@ def verify_otp(otp: str, email: str = "mahdiharoun44@gmail.com") -> dict:
         return {"verified": False, "reason": "OTP invalid. Please check the code and try again."}
 
     # Delete OTP after successful verification
-    del otp_storage[email]
+    redis_client.delete(redis_key)
 
     return {"verified": True, "email": email, "message": "OTP verified successfully!"}
     

@@ -363,6 +363,7 @@ You handle authentication operations for user mahdiharoun44@gmail.com.
 2. **For OTP Verification requests**:
    - NEVER ask for email - it's always mahdiharoun44@gmail.com
    - Simply call `verify_otp(otp="the_code_provided")`
+   - if code not provided , you must ask the user to provide it
    - Return the verification result directly
 
 3. **Response Format**:
@@ -424,13 +425,15 @@ HERE ARE DETAILED INSTRUCTIONS ABOUT EACH SUB-AGENT AND HOW TO USE THEM EFFECTIV
 **Use for**: Authentication operations
 - **CRITICAL**: For restricted actions, ALWAYS send OTP code and verify token before proceeding
 - No exceptions - invalid/missing token = action denied
+
+**IMPORTANT**
 **Restricted Actions Requiring Authentication:**
 - Database deletions
 - Database updates
 - Any delete operations
 - Any update operations
 - Create operations are NOT restricted
-
+**IMPORTANT**: when user provide you with the otp code you must send it to the Auth_Agent to verify it before proceeding with the Task .
 
 ### Email Validation Protocol
 Before sending emails:
@@ -510,71 +513,45 @@ always ask the aws s3 agent for any s3_keys you need to read from or write to s3
 
 """
 
-DOCUMENTS_TOOL_DESCRIPTION = """Tools for reading and processing document files to extract and utilize their content effectively.
+DOCUMENTS_TOOL_DESCRIPTION = """
+Documents consists of 2 types , files and images , images are treated as files here
+they preproccessed and stored in the memory , you are not allowed to ask the user to upload files or images directly
 
-**Available Tools:**
-1. summarize_file: Summarize content of PDF or text file by file_id
-2. search_retrieve_faiss: Search and retrieve relevant info from documents added to this conversation
-3. create_pdf_file: Create PDF from text, upload to S3, return presigned download link
-4. list_cached_files: See all files cached in this conversation
-5. get_cached_file: Retrieve previously cached file content
+when you recived in the contexxt ["files_ids"] you need to use the tool " list_documents_in_thread ' 
+you will get a list of dictionaries with each dictionary containing the following keys :
+- file_id : the unique id of the file
+- file_name : the name of the file
+- file_type : the type of the file ( pdf , txt , image , etc.. )
+- upload_date : the date when the file was uploaded
 
-**FILE CONTEXT SYSTEM:**
-The user's message will include an [AVAILABLE FILES] section showing:
-- File number, type, name, and ID for each file in the conversation
-- Multiple files are numbered (1, 2, 3, etc.)
-- Each file has a unique file_id you can use
+you need to use the file_id to refer to the file in any further operations 
+by injecting the file_id in the tol called " search_retrieve_faiss " and "summarize_file" 
 
-**HANDLING DIFFERENT SCENARIOS:**
+"summarize_file" tool will give you a concise summary of the file content 
 
-1. **Single File Questions:**
-   - User: "What is this document about?"
-   - Action: Use search_retrieve_faiss (automatically uses all available files)
-   
-2. **Multiple Files - General:**
-   - User: "Summarize all the documents"
-   - Action: Call summarize_file for EACH file_id separately, then combine results
-   
-3. **Comparison Between Files:**
-   - User: "Compare document 1 and document 2" or "What are the differences?"
-   - Action: 
-     a) Search/summarize each file separately using their file_ids
-     b) Analyze both results
-     c) Provide comparison highlighting similarities and differences
-   
-4. **Specific File Reference:**
-   - User: "What does document 2 say about X?" or "Summarize the first file"
-   - Action: Use the file_id for that specific numbered document
-   
-5. **Mixed Content (PDFs + Images):**
-   - PDFs: Use search_retrieve_faiss or summarize_file
-   - Images: Use analyze_image tool (images cached automatically)
-   - Combined: Analyze each type with appropriate tool, then synthesize
+"search_retrieve_faiss" tool will give you relevant chunks from the file based on your question
 
-**IMPORTANT RULES:**
-- ALWAYS check the [AVAILABLE FILES] section in the user's message
-- When multiple files present and user is vague, ask which file OR analyze all
-- For "compare" requests: Explicitly process each file then compare
-- File numbers (1, 2, 3) correspond to the order shown in [AVAILABLE FILES]
-- search_retrieve_faiss automatically searches across ALL added files
+always check if there are new files in the context or which files are user is referring to before proceeding with any file related operations
+using the " list_documents_in_thread  " tool to get the list of files in the current conversation thread
+in each message if there is a file operation you will get a messgae appended with the user messgae contains : The user has uploaded the following files for context:\n" + "\n".join(files_ids) , use that to track new files and use them as context for your operations
+if you felt comfused about which file the user is referring to , use the " list_documents_in_thread  " tool to get the list of files in the current conversation thread and clarify with the user which file he is referring to
+if you still confused after that , you can provide summaries of the files using the " summarize_file " tool to help the user identify the correct file 
 
-**CACHING:**
-- Summaries cached by file_id (instant reuse)
-- Image analysis cached (no re-processing)
-- Use list_cached_files to see what's already processed
+**IMPORTANT**:
+you only have thsese 3 tools to work with files and images :
+1. list_documents_in_thread : for listing all documents in the current conversation thread
+2. summarize_file : for getting a concise summary of the file content
+3. search_retrieve_faiss : for searching relevant chunks from the file based on your
+
+dont ask the user to upload files or images directly , you are not allowed to do that 
+
+
+
+
+
+
+
 """
-
-
-
-IMAGE_ANALYSIS_TOOL_DESCRIPTION = """
-Tools for analyzing and extracting information from images.
-
-for image task just get the image_file_id from the context the user will provide it 
-and the use the tool : summarize_file 
-to get the summary of the image
-after this move with the task 
-"""
-
 
 
 WEB_SEARCH_AGENT_INSTRUCTIONS = """

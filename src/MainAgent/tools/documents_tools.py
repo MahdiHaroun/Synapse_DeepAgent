@@ -113,10 +113,35 @@ async def create_pdf_file(
     }
 
 
+@tool
+async def list_documents_in_thread(
+    runtime: ToolRuntime[Context]
+) -> List[dict]:
+    """
+    List all documents added to the current thread/conversation.
+    Returns a list of dicts with file_id, filename, upload_date, and s3_key.
+    """
+    thread_id = runtime.context.thread_id
 
+    db = sessionLocal()
+    try:
+        files = db.query(models.UploadedFiles).filter(
+            models.UploadedFiles.thread_id == thread_id
+        ).all()
 
+        file_list = []
+        for f in files:
+            file_list.append({
+                "file_id": f.file_id,
+                "filename": f.filename,
+                "file_type": f.file_type,
+                "upload_date": f.upload_date.isoformat(),
+            })
 
+        return file_list
 
+    finally:
+        db.close()
 
 
 @tool

@@ -17,7 +17,7 @@ from src.Prompts.prompts import (
 from src.SubAgents.task_tool import _create_task_tool
 from src.MCP.mcp import all_mcp_tools
 from src.LLMs.GroqLLMs.llms import groq_moonshotai_llm
-#from src.LLMs.OpenAI_LLMs.llms import openai_gpt4_llm
+from src.LLMs.OpenAI_LLMs.llms import openai_gpt4_llm
 from src.States.state import DeepAgentState
 
 
@@ -206,7 +206,7 @@ class SubAgents:
         task_tool = _create_task_tool(
             tools=sub_agent_tools,
             subagents=[DB_sub_agent , DB_analyzer_agent, EC_agent , AWS_S3_agent , analysis_agent , Calendar_agent, Auth_agent, Web_Search_agent, RAG_agent , Scheduler_agent],
-            model=groq_moonshotai_llm,
+            model=openai_gpt4_llm,
             state_schema=DeepAgentState
         )
         return task_tool

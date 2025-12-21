@@ -4,7 +4,7 @@ from pymongo import MongoClient
 from src.SubAgents.subAgents import task_tool 
 from src.LLMs.GroqLLMs.llms import groq_moonshotai_llm 
 from src.embedding.embedding import titan_embed_v1
-#from src.LLMs.OpenAI_LLMs.llms import openai_gpt4_llm
+from src.LLMs.OpenAI_LLMs.llms import openai_gpt4_llm
 #from src.LLMs.AWS_LLMs.llms import sonnet_4_llm
 from src.States.state import DeepAgentState
 from src.MainAgent.tools.todo_tools import write_todos, read_todos , get_current_datetime 
@@ -12,8 +12,9 @@ from src.MainAgent.tools.documents_tools import(
     create_pdf_file,
     summarize_file,
     search_retrieve_faiss ,
+    list_documents_in_thread
 )
-from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION  , IMAGE_ANALYSIS_TOOL_DESCRIPTION , TASK_DESCRIPTION_PREFIX , MEMORY_TOOL_INSTRUCTIONS , URLS_PROTOCOL , SCHADULE_JOBS_INSTRUCTIONS
+from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION  ,  TASK_DESCRIPTION_PREFIX , MEMORY_TOOL_INSTRUCTIONS , URLS_PROTOCOL , SCHADULE_JOBS_INSTRUCTIONS
 from langchain.agents import create_agent
 #from langgraph.checkpoint.memory import InMemorySaver 
 from langgraph.checkpoint.mongodb import MongoDBSaver
@@ -65,6 +66,7 @@ class MainAgent:
             create_pdf_file,
             summarize_file,
             search_retrieve_faiss,
+            list_documents_in_thread
 
         ] 
         all_tools = delegation_tools + built_in_tools
@@ -86,8 +88,6 @@ class MainAgent:
         + "\n\n"
         + DOCUMENTS_TOOL_DESCRIPTION
         + "\n\n"
-        + IMAGE_ANALYSIS_TOOL_DESCRIPTION
-        + "\n\n"
         + "CRITICAL: You MUST use write_todos tool for ANY user request to create a plan before proceeding.\n"
         + "=" * 80
         + "\n\n"
@@ -106,7 +106,7 @@ class MainAgent:
         INSTRUCTIONS = await self.create_instructions()
 
         agent = create_agent(
-            groq_moonshotai_llm,
+            openai_gpt4_llm,
             all_tools,
             system_prompt=INSTRUCTIONS,
             state_schema=DeepAgentState,

@@ -36,7 +36,7 @@ async def create_new_thread(thread_details: schemas.ThreadCreate, db: Session = 
     """
     # Generate unique UUID for the thread
     
-    thread_uuid = thread_details.uuid
+    thread_uuid = f"{current_user.name}_{thread_details.uuid}"
     
     #check fo duplicate
     existing_thread = db.query(models.Thread).filter(models.Thread.uuid == thread_uuid,
@@ -45,7 +45,7 @@ async def create_new_thread(thread_details: schemas.ThreadCreate, db: Session = 
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Thread with this UUID already exists")
     
     if not thread_uuid:
-        thread_uuid = str(uuid.uuid4())
+        thread_uuid = f"{current_user.name}_{str(uuid.uuid4())}"
     
     new_thread = models.Thread(
         uuid=thread_uuid,
