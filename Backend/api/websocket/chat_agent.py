@@ -47,7 +47,7 @@ async def stream_chat(
             try:
                 files_ids = []
                 for idx, file_id in enumerate(file_ids, 1):
-                    file = db.query(UploadedFiles).filter(UploadedFiles.file_id == file_id).first()
+                    file = db.query(UploadedFiles).filter(UploadedFiles.file_uuid == file_id).first()
                     if file:
                         file
                 

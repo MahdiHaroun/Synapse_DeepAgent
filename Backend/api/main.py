@@ -7,7 +7,7 @@ from fastapi import FastAPI
 # Import database and routers
 from Backend.api.database import get_db, engine
 from Backend.api import models
-from Backend.api.routers import auth, threads, files, chat, protocols, testing
+from Backend.api.routers import auth, threads, files, chat, protocols, testing, privaliges, role
 from Backend.api.routers import scheduler
 from Backend.api.routers.ingestion import ingest
 from Backend.api.websocket.websocket_server import start_websocket_server  # Your custom WS server
@@ -57,6 +57,8 @@ app.include_router(protocols.router)
 app.include_router(scheduler.router)
 app.include_router(ingest.router)
 app.include_router(testing.router)
+app.include_router(privaliges.router)
+app.include_router(role.router)
 
 
 @app.get("/")

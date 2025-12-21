@@ -24,9 +24,14 @@ class ChatResponse(BaseModel):
 
 class AdminCreate(BaseModel):
     name: str
-    username: str
     email: EmailStr
     password: str
+
+
+class AdminUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
 
 
 class Admin_Response(BaseModel):
@@ -47,6 +52,55 @@ class Token(Admin_Response):
 
 class AdminOut(BaseModel):
     Confirmation: str
+
+
+class AdminInfo(BaseModel):
+    id: int
+    username: str
+    name: str
+    email: EmailStr
+    is_verified: bool
+
+    class Config:
+        from_attributes = True
+
+
+class PrivilegeCreate(BaseModel):
+    name: str = Field(..., description="Unique privilege name")
+    description: Optional[str] = Field(None, description="Privilege description")
+
+
+class PrivilegeUpdate(BaseModel):
+    name: Optional[str] = Field(None, description="Updated privilege name")
+    description: Optional[str] = Field(None, description="Updated privilege description")
+
+
+class PrivilegeOut(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class RoleCreate(BaseModel):
+    name: str = Field(..., description="Unique role name")
+    privilege_ids: list[int] = Field(default=[], description="List of privilege IDs to attach to this role")
+
+
+class RoleUpdate(BaseModel):
+    name: Optional[str] = Field(None, description="Updated role name")
+    privilege_ids: Optional[list[int]] = Field(None, description="Updated list of privilege IDs")
+
+
+class RoleOut(BaseModel):
+    id: int
+    name: str
+    privileges: list[PrivilegeOut] = []
+
+    class Config:
+        from_attributes = True
 
 class Admin_login(BaseModel):   #used form instead
     email: EmailStr

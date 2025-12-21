@@ -36,10 +36,15 @@ class ChatResponse(BaseModel):
 
 def retrieve_file_ids_for_thread(thread_id: str, db: Session):
     """Get all file IDs associated with a thread"""
+    # Get the thread's integer ID from its UUID
+    thread = db.query(models.Thread).filter(models.Thread.uuid == thread_id).first()
+    if not thread:
+        return []
+    
     return [
-        row.file_id
-        for row in db.query(models.UploadedFiles.file_id)
-        .filter(models.UploadedFiles.thread_id == thread_id)
+        row.file_uuid
+        for row in db.query(models.UploadedFiles.file_uuid)
+        .filter(models.UploadedFiles.thread_id == thread.id)
         .all()
     ]
 
@@ -51,7 +56,7 @@ def get_file_context(file_ids: list, db: Session) -> str:
     
     files_info = []
     for idx, file_id in enumerate(file_ids, 1):
-        file = db.query(models.UploadedFiles).filter(models.UploadedFiles.file_id == file_id).first()
+        file = db.query(models.UploadedFiles).filter(models.UploadedFiles.file_uuid == file_id).first()
         if file:
             file_type = file.filename.split('.')[-1].upper() if '.' in file.filename else 'UNKNOWN'
             files_info.append(f"  {idx}. [{file_type}] {file.filename}\n     File ID: {file_id}")

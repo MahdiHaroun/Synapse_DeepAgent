@@ -35,10 +35,15 @@ def check_thread_ownership(user_id: int, thread_id: str) -> bool:
 
 
 def retrieve_file_ids_for_thread(thread_id: str, db: Session):
+    # Get the thread's integer ID from its UUID
+    thread = db.query(models.Thread).filter(models.Thread.uuid == thread_id).first()
+    if not thread:
+        return []
+    
     return [
-        row.file_id
-        for row in db.query(models.UploadedFiles.file_id)
-        .filter(models.UploadedFiles.thread_id == thread_id)
+        row.file_uuid
+        for row in db.query(models.UploadedFiles.file_uuid)
+        .filter(models.UploadedFiles.thread_id == thread.id)
         .all()
     ]
 
