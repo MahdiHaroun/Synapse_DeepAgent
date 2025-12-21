@@ -1,5 +1,6 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from pydantic import BaseModel, EmailStr, Field, field_serializer, ConfigDict
+from typing import Optional, Union
+from datetime import datetime
 
 
 
@@ -63,7 +64,7 @@ class ThreadCreate(BaseModel):
 class ThreadOut(BaseModel):
     id: int
     uuid: str
-    last_interaction: Optional[str] = None
+    last_interaction: Optional[datetime]
     is_active: bool
     admin_id: int
 

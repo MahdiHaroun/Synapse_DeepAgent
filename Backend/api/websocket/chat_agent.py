@@ -10,7 +10,7 @@ from Backend.api import models
 
 async def update_thread_last_active(thread_id: str):
     """Update the last_active timestamp of a thread to the current time."""
-    db = next(get_db())
+    db = sessionLocal()
     try:
         thread = db.query(models.Thread).filter(models.Thread.uuid == thread_id).first()
         if thread:
