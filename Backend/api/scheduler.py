@@ -27,7 +27,8 @@ class EventBridgeScheduler:
         schedule_expression: str,
         event_description: str,
         target_url: str,
-        event_data: dict
+        event_data: dict,
+        group_name: str = "synapse_schedules"
     ) -> dict:
         """Create EventBridge Schedule with Lambda target"""
         try:
@@ -46,6 +47,12 @@ class EventBridgeScheduler:
                     "success": False,
                     "error": "EVENTBRIDGE_SCHEDULER_ROLE_ARN not set in .env. Run: ./setup_scheduler_role.sh"
                 }
+            dead_letter_queue_arn = os.getenv("EVENTBRIDGE_DEAD_LETTER_QUEUE_ARN")
+            if not dead_letter_queue_arn:
+                return {
+                    "success": False,
+                    "error": "EVENTBRIDGE_DEAD_LETTER_QUEUE_ARN not set in .env. set it to enable dead letter queue."
+                }
 
             # Add metadata to event data
             event_data["eventbridge_rule_name"] = rule_name
@@ -55,14 +62,20 @@ class EventBridgeScheduler:
             response = self.scheduler_client.create_schedule(
                 Name=rule_name,
                 ScheduleExpression=schedule_expression,
+                ScheduleExpressionTimezone = "Asia/Amman",
                 Description=event_description,
+                GroupName=group_name,
                 State='ENABLED',
                 FlexibleTimeWindow={'Mode': 'OFF'},
                 Target={
                     'Arn': lambda_arn,
+                    'DeadLetterConfig': {
+                        "Arn": dead_letter_queue_arn
+                    },
                     'RoleArn': role_arn,
                     'Input': json.dumps(event_data)
                 }
+
             )
             
             logger.info(f"Schedule created: {rule_name}")
@@ -80,11 +93,14 @@ class EventBridgeScheduler:
 
 
     
-    def delete_schedule(self, rule_name: str) -> dict:
+    def delete_schedule(self, rule_name: str, group_name: str = "synapse_schedules") -> dict:
         """Delete an EventBridge schedule"""
         try:
-            self.scheduler_client.delete_schedule(Name=rule_name)
-            logger.info(f"Deleted schedule: {rule_name}")
+            self.scheduler_client.delete_schedule(
+                Name=rule_name,
+                GroupName=group_name
+            )
+            logger.info(f"Deleted schedule: {rule_name} from group: {group_name}")
             
             return {
                 'success': True,
@@ -118,27 +134,53 @@ class EventBridgeScheduler:
             logger.error(f"Error listing schedules: {e}")
             return []
     
-    def enable_schedule(self, rule_name: str) -> dict:
+    def enable_schedule(self, rule_name: str, group_name: str = "synapse_schedules") -> dict:
         """Enable a disabled schedule"""
         try:
+            # Get existing schedule details
+            existing = self.scheduler_client.get_schedule(
+                Name=rule_name,
+                GroupName=group_name
+            )
+            
+            # Update with new state
             self.scheduler_client.update_schedule(
                 Name=rule_name,
-                State='ENABLED'
+                GroupName=group_name,
+                ScheduleExpression=existing['ScheduleExpression'],
+                ScheduleExpressionTimezone=existing.get('ScheduleExpressionTimezone', 'Asia/Amman'),
+                FlexibleTimeWindow=existing['FlexibleTimeWindow'],
+                Target=existing['Target'],
+                State='ENABLED',
+                Description=existing.get('Description', '')
             )
-            logger.info(f"Enabled schedule: {rule_name}")
+            logger.info(f"Enabled schedule: {rule_name} in group: {group_name}")
             return {'success': True, 'message': f'Schedule enabled: {rule_name}'}
         except Exception as e:
             logger.error(f"Error enabling schedule: {e}")
             return {'success': False, 'error': str(e)}
     
-    def disable_schedule(self, rule_name: str) -> dict:
+    def disable_schedule(self, rule_name: str, group_name: str = "synapse_schedules") -> dict:
         """Disable a schedule without deleting it"""
         try:
+            # Get existing schedule details
+            existing = self.scheduler_client.get_schedule(
+                Name=rule_name,
+                GroupName=group_name
+            )
+            
+            # Update with new state
             self.scheduler_client.update_schedule(
                 Name=rule_name,
-                State='DISABLED'
+                GroupName=group_name,
+                ScheduleExpression=existing['ScheduleExpression'],
+                ScheduleExpressionTimezone=existing.get('ScheduleExpressionTimezone', 'Asia/Amman'),
+                FlexibleTimeWindow=existing['FlexibleTimeWindow'],
+                Target=existing['Target'],
+                State='DISABLED',
+                Description=existing.get('Description', '')
             )
-            logger.info(f"Disabled schedule: {rule_name}")
+            logger.info(f"Disabled schedule: {rule_name} in group: {group_name}")
             return {'success': True, 'message': f'Schedule disabled: {rule_name}'}
         except Exception as e:
             logger.error(f"Error disabling schedule: {e}")
