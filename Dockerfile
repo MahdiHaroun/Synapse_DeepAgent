@@ -25,5 +25,6 @@ COPY src src
 ENV PYTHONPATH=/app
 
 EXPOSE 8070
+EXPOSE 8071
 
 CMD ["python", "-m", "Backend.api.main"]

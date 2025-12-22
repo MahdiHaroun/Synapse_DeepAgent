@@ -73,12 +73,12 @@ async def ingest_pdf(
 
     new_file  = models.UploadedFiles(
         filename=file.filename,
-        thread_id=thread_id,
+        thread_id=thread.id,
         admin_id=current_user.id,
         file_type="pdf", 
         file_size=file_size,
         upload_date= datetime.datetime.utcnow(), 
-        file_id=file_id
+        file_uuid=file_id
     )
 
     db.add(new_file)
@@ -152,12 +152,12 @@ async def image_ingest(
 
     new_file  = models.UploadedFiles(
         filename=file.filename,
-        thread_id=thread_id,
+        thread_id=thread.id,
         admin_id=current_user.id,
         file_type="image", 
         file_size=file_size,
         upload_date= datetime.datetime.utcnow(), 
-        file_id=file_id
+        file_uuid=file_id
     )
 
     db.add(new_file)

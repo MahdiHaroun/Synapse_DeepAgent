@@ -7,7 +7,7 @@ embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L
 
 
 class VectorStoreManager:
-    def __init__(self, base_dir="faiss"):
+    def __init__(self, base_dir="/app/faiss"):
         self.embeddings = embedding
         self.base_dir = base_dir
         os.makedirs(base_dir, exist_ok=True)

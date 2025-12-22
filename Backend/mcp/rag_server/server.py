@@ -1,6 +1,6 @@
 from mcp.server import FastMCP
-#from Synapse_RAG.agent.agent import rag_agent
-from Backend.mcp.rag_server.Synapse_RAG.agent.agent import rag_agent
+from Synapse_RAG.agent.agent import rag_agent
+#from Backend.mcp.rag_server.Synapse_RAG.agent.agent import rag_agent
 from dotenv import load_dotenv
 import os
 from pathlib import Path

@@ -11,9 +11,11 @@ services:
       - .env
     ports:
       - "8070:8070"
+      - "8071:8071"
     volumes:
       - synapse-shared:/shared
       - ./logs:/app/logs
+      - ./faiss:/app/faiss
       - ./.env:/app/.env:ro
 
       
@@ -144,10 +146,42 @@ services:
       - synapse-network
     restart: unless-stopped
 
+  mcp-scheduler:
+    build:
+      context: ./Backend/mcp/schedule_server
+      dockerfile: Dockerfile
+    container_name: synapse-mcp-scheduler
+    env_file:
+      - .env
+    ports:
+      - "3070:3070"
+    volumes:
+      - synapse-shared:/shared
+      - ./.env:/app/.env:ro
+      
+    networks:
+      - synapse-network
+    restart: unless-stopped
+
+  # Redis Server
+  redis:
+    image: redis:7-alpine
+    container_name: synapse-redis
+    ports:
+      - "6378:6378"
+    volumes:
+      - synapse-redis-data:/data
+    networks:
+      - synapse-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
 volumes:
   synapse-postgres-data:
     driver: local
   synapse-mongodb-data:
+    driver: local
+  synapse-redis-data:
     driver: local
   synapse-shared:
     driver: local

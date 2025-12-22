@@ -1,7 +1,10 @@
 import json
+import os
 import redis.asyncio as aioredis
 
-redis_client = aioredis.from_url("redis://localhost:6379", decode_responses=True)
+# Use environment variable or default to docker service name
+redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
+redis_client = aioredis.from_url(redis_url, decode_responses=True)
 
 def ingestion_key(job_id: str):
     return f"ingestion:{job_id}"

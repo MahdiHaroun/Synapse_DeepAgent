@@ -31,6 +31,10 @@
     "rag-service": {
       "url": "http://mcp-rag:3010/sse",
       "transport": "sse"
+    },
+    "scheduler": {
+      "url": "http://mcp-scheduler:3070/sse",
+      "transport": "sse"
     }
   }
 }

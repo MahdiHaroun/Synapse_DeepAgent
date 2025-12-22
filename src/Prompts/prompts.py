@@ -597,8 +597,8 @@ you must follow these instructions when executing scheduled jobs :
 2. if job requires sending an email with attachment you must use the scheduler_agent subagent and you must provide it with the presigned_url of the attachment if there 
 is any attachment 
 
-**CRITICAL RULES:**
-- you msut tell the subagent " this is a scheduled job " in the task description when delegating to it
+always use the subagent "Schedule_Agent" to send emails , never use the external communication agent directly for sending emails in scheduled jobs 
+becuase its requires authentication and the schedule agent is already authenticated , you will face errors if you try to use the external communication agent directly .
 """
 
 

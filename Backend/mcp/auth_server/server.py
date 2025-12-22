@@ -12,7 +12,9 @@ env_path = Path(__file__).parent.parent.parent.parent / ".env"
 load_dotenv(env_path)
 
 # Initialize Redis client
-redis_client = redis.Redis(host='127.0.0.1', port=6379, db=0, decode_responses=True)
+# Use environment variable or default to docker service name
+redis_host = os.getenv("REDIS_HOST", "redis")
+redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 
 # Initialize Resend API key
 resend.api_key = os.getenv("RESEND_API_KEY")

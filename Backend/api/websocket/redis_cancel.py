@@ -1,9 +1,11 @@
 import redis.asyncio as redis
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
-REDIS_URL = "redis://localhost:6379"
+# Use environment variable or default to docker service name
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 def cancel_key(thread_id: str) -> str:

@@ -121,18 +121,27 @@ async def list_documents_in_thread(
     List all documents added to the current thread/conversation.
     Returns a list of dicts with file_id, filename, upload_date, and s3_key.
     """
-    thread_id = runtime.context.thread_id
+    thread_uuid = runtime.context.thread_id
 
     db = sessionLocal()
     try:
+        # First, get the Thread by UUID to get the integer ID
+        thread = db.query(models.Thread).filter(
+            models.Thread.uuid == thread_uuid
+        ).first()
+        
+        if not thread:
+            return []
+        
+        # Now query files using the integer thread ID
         files = db.query(models.UploadedFiles).filter(
-            models.UploadedFiles.thread_id == thread_id
+            models.UploadedFiles.thread_id == thread.id
         ).all()
 
         file_list = []
         for f in files:
             file_list.append({
-                "file_id": f.file_id,
+                "file_id": f.file_uuid,
                 "filename": f.filename,
                 "file_type": f.file_type,
                 "upload_date": f.upload_date.isoformat(),
@@ -166,13 +175,13 @@ async def search_retrieve_faiss(
         - For comparing files: Call this multiple times with different file_ids
     """
     thread_id = runtime.context.thread_id
-    all_file_ids = runtime.context.files_ids
+    all_file_uuids = runtime.context.files_ids
 
-    if not all_file_ids:
+    if not all_file_uuids:
         return "No documents have been added to this conversation yet. Please add documents first."
 
     db = FAISS.load_local(
-        f"faiss/{thread_id}",
+        f"/app/faiss/{thread_id}",
         titan_embed_v1,
         allow_dangerous_deserialization=True
     )
@@ -192,9 +201,9 @@ async def search_retrieve_faiss(
         # Search across all added files
         filtered_docs = [
             d for d in docs 
-            if d.metadata.get("file_id") in all_file_ids
+            if d.metadata.get("file_id") in all_file_uuids
         ]
-        context_msg = f"all {len(all_file_ids)} added file(s)"
+        context_msg = f"all {len(all_file_uuids)} added file(s)"
     
     if not filtered_docs:
         return f"No relevant information found in {context_msg} for this question."
@@ -217,15 +226,15 @@ Answer:"""
 
 
 
-def get_all_chunks(db: FAISS, file_id: str):
+def get_all_chunks(db: FAISS, file_uuid: str):
     """Retrieve all document chunks for a given file ID from the FAISS vector store."""
     # Get all documents from the vector store
     all_docs = db.docstore._dict.values()
     
-    # Filter by file_id in metadata
+    # Filter by file_id in metadata (metadata uses "file_id" as the key)
     file_docs = [
         doc for doc in all_docs 
-        if doc.metadata.get("file_id") == file_id
+        if doc.metadata.get("file_id") == file_uuid
     ]
     
     return file_docs
@@ -235,7 +244,7 @@ def get_all_chunks(db: FAISS, file_id: str):
 async def summarize_file(
     runtime: ToolRuntime[Context],
     state: Annotated[DeepAgentState, InjectedState],
-    file_id: str 
+    file_uuid: str 
 ):
     """
     Use ONLY when the user asks to summarize, overview, or TL;DR a file.
@@ -245,17 +254,17 @@ async def summarize_file(
     """
 
     thread_id = runtime.context.thread_id
-    file_id = file_id
+    file_uuid = file_uuid
 
 
 
     db = FAISS.load_local(
-        f"faiss/{thread_id}",
+        f"/app/faiss/{thread_id}",
         titan_embed_v1,
         allow_dangerous_deserialization=True
     )
 
-    docs = get_all_chunks(db, file_id)
+    docs = get_all_chunks(db, file_uuid)
 
     if not docs:
         return "No content found for this file."

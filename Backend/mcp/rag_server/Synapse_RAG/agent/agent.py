@@ -1,7 +1,6 @@
-#from Synapse_RAG.llm.llm import groq_llama3_llm
-#from Synapse_RAG.tools.tools import get_query_results , get_object_id_list
-from Backend.mcp.rag_server.Synapse_RAG.llm.llm import groq_llama3_llm
-from Backend.mcp.rag_server.Synapse_RAG.tools.tools import get_query_results , get_object_id_list
+from Synapse_RAG.llm.llm import groq_llama3_llm
+from Synapse_RAG.tools.tools import get_query_results , get_object_id_list
+
 from mcp.server import FastMCP
 from langchain.agents import create_agent 
 import asyncio

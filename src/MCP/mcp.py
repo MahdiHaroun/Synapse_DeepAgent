@@ -35,7 +35,7 @@ async def load_mcp_servers_async(config_path):
     return servers
 
 
-mcp_config_path = "src/MCP/MCP_local.json"
+mcp_config_path = "src/MCP/MCP.json"
 mcp_servers = None
 
 _client = None
