@@ -22,7 +22,6 @@ file_handler.setFormatter(formatter)
 
 logger.addHandler(file_handler)
 
-
 async def ingest_pipeline(job_id: str, file_path: str, file_id: str, thread_id: str):
     """Process PDF ingestion pipeline with status tracking."""
     try:
@@ -46,12 +45,8 @@ async def ingest_pipeline(job_id: str, file_path: str, file_id: str, thread_id: 
         await set_status(job_id, "completed", 100, file_id, thread_id)
         logger.info(f"Successfully completed ingestion for job {job_id}")
         
-        # Cleanup uploaded file
-        try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-        except Exception as cleanup_error:
-            logger.warning(f"Failed to cleanup file {file_path}: {cleanup_error}")
+        # Keep the files - no cleanup!
+        logger.info(f"File preserved at {file_path}")
 
     except Exception as e:
         logger.error(f"Ingestion pipeline failed for job {job_id}: {e}", exc_info=True)
@@ -75,7 +70,6 @@ async def ingest_image(job_id: str, file_path: str, file_id: str, thread_id: str
         await set_status(job_id, "analyzing", 70, file_id, thread_id)
         analysis = await processor.analyze_image(normalized_path)
 
-        # Create a document from the image analysis
         from langchain_core.documents import Document
         doc = Document(
             page_content=analysis,
@@ -94,17 +88,16 @@ async def ingest_image(job_id: str, file_path: str, file_id: str, thread_id: str
         await set_status(job_id, "completed", 100, file_id, thread_id)
         logger.info(f"Successfully completed image ingestion for job {job_id}")
 
-        # Cleanup uploaded files
+        # Keep original, but cleanup normalized version
         try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            if os.path.exists(normalized_path):
+            if normalized_path != file_path and os.path.exists(normalized_path):
                 os.remove(normalized_path)
+                logger.info(f"Cleaned up normalized image at {normalized_path}")
         except Exception as cleanup_error:
-            logger.warning(f"Failed to cleanup files for job {job_id}: {cleanup_error}")
+            logger.warning(f"Failed to cleanup normalized file: {cleanup_error}")
+            
+        logger.info(f"Original image preserved at {file_path}")
+        
     except Exception as e:
         logger.error(f"Image ingestion pipeline failed for job {job_id}: {e}", exc_info=True)
         await set_status(job_id, "failed", 0, file_id, thread_id, error=str(e))
-        
-
-

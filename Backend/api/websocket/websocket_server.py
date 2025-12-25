@@ -23,7 +23,7 @@ class WSContext:
         self.user_id = user_id
         self.user_name = user_name
         self.thread_id = thread_id
-        self.file_ids = []
+        self.file_id = None
 
 
 def check_thread_ownership(user_id: int, thread_id: str) -> bool:
@@ -98,7 +98,7 @@ async def handle_client(ws):
             # ===== SET THREAD =====
             elif action == "set_thread":
                 thread_id = data.get("thread_id")
-                file_ids =  retrieve_file_ids_for_thread_db(thread_id) 
+                file_id = None
 
                 if not check_thread_ownership(user_id, thread_id):
                     await ws.send(json.dumps({
@@ -109,15 +109,14 @@ async def handle_client(ws):
 
                 context = {
                     "thread_id": thread_id,
-                    "file_ids": file_ids,
                     "user_id": str(user_id),  # Convert to string for Context
-                    "user_name": user_name
+                    "user_name": user_name,
+                    "file_id": file_id
                 }
 
                 await ws.send(json.dumps({
                     "type": "thread_ok",
-                    "thread_id": thread_id,
-                    "file_ids": file_ids
+                    "thread_id": thread_id
                 }))
 
             #===== ADD FILE =====
@@ -130,7 +129,7 @@ async def handle_client(ws):
                         "message": "Thread not initialized"
                   }))
                     continue
-                context["file_ids"] = [file_id]
+                context["file_id"] = [file_id]
 
                 await ws.send(json.dumps({
                     "type": "file_added",
@@ -154,7 +153,7 @@ async def handle_client(ws):
                     user_id=context["user_id"],
                     user_name=context["user_name"],
                     message=message,
-                    file_ids=context["file_ids"], 
+                    file_id=context["file_id"], 
                     show_tools_responses=show_tools_responses
                 ):
                     await ws.send(json.dumps(chunk))

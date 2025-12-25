@@ -18,8 +18,8 @@ class Context:
     user_id: str
     user_name: str
     thread_id: str
-    files_ids : List[str] 
-    images_ids: List[str]
+    file_id : str
+    
 
 
 

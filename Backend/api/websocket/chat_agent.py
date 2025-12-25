@@ -25,7 +25,7 @@ async def stream_chat(
     user_id: str,
     user_name: str,
     message: str,
-    file_ids: list, 
+    file_id: str, 
     show_tools_responses: bool = False
 ):
     """Stream chat responses from the main agent with cancellation support."""
@@ -36,29 +36,21 @@ async def stream_chat(
             user_id=user_id,
             user_name=user_name,
             thread_id=thread_id,
-            files_ids=file_ids,
-            images_ids=[]
+            file_id=file_id,
+            
         )
         
-        # Build comprehensive file context information
-        file_context = ""
-        if file_ids:
-            db = next(get_db())
-            try:
-                files_ids = []
-                for idx, file_id in enumerate(file_ids, 1):
-                    file = db.query(UploadedFiles).filter(UploadedFiles.file_uuid == file_id).first()
-                    if file:
-                        file
-                
-                if files_ids:
-                    file_context = "\n\nThe user has uploaded the following files for context:\n" + "\n".join(files_ids)
+   
+        if file_id:
+                file_context = "\n\nThe user has uploaded the following file for context:\n" + "\n".join(file_id) 
+                + "the relative path to access the file is /uploads/" + file_id + "\n"
+        else:
+            file_context = ""
                     
-            finally:
-                db.close()
+
         
         # Append file context to user message
-        enhanced_message = message + file_context
+        enhanced_message = message + "\n" + file_context
         
         async for event in main_agent.astream_events(
             {"messages": [{"role": "user", "content": enhanced_message}], "thread_id": thread_id},

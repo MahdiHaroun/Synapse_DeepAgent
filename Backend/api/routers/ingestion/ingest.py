@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-UPLOAD_DIR = "/shared/{thread_id}/uploads"
+
 
 
 @router.post("/ingest/pdf/{thread_id}")
@@ -32,8 +32,6 @@ async def ingest_pdf(
     if not current_user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     
-    
-
     thread = db.query(models.Thread).filter(
         models.Thread.uuid == thread_id,
         models.Thread.admin_id == current_user.id
@@ -52,16 +50,51 @@ async def ingest_pdf(
         raise HTTPException(status_code=400, detail="thread_id is required")
     
     job_id = str(uuid4())
-    file_id = file.filename.replace(".pdf" , "") 
+    file_id = "pdf_" + str(uuid4())
+    path = f"/shared/{thread_id}/uploads/{file_id}.pdf"
 
-    path = f"{UPLOAD_DIR}/{file_id}.pdf"
+    # Create directory
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    print(f"[{datetime.datetime.now()}] Created directory: {os.path.dirname(path)}")
+
+    # List directory BEFORE writing
+    print(f"[{datetime.datetime.now()}] Directory contents BEFORE write:")
+    print(os.listdir(os.path.dirname(path)))
 
     try:
+        # Read file content first
+        file_content = await file.read()
+        print(f"[{datetime.datetime.now()}] Read {len(file_content)} bytes from uploaded file")
+        
+        if len(file_content) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+        
+        # Write to disk with sync
         with open(path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
+            bytes_written = f.write(file_content)
+            f.flush()
+            os.fsync(f.fileno())
+        
+        print(f"[{datetime.datetime.now()}] Wrote {bytes_written} bytes to {path}")
+        
+        # Immediate verification
+        if not os.path.exists(path):
+            raise HTTPException(status_code=500, detail=f"File was not created at {path}")
+        
+        actual_size = os.path.getsize(path)
+        stat_info = os.stat(path)
+        print(f"[{datetime.datetime.now()}] Verified file at {path}")
+        print(f"  - Size: {actual_size} bytes")
+        print(f"  - Permissions: {oct(stat_info.st_mode)}")
+        print(f"  - Owner: {stat_info.st_uid}:{stat_info.st_gid}")
+        
+        # List directory AFTER writing
+        print(f"[{datetime.datetime.now()}] Directory contents AFTER write:")
+        print(os.listdir(os.path.dirname(path)))
+        
     except Exception as e:
-        logger.error(f"Failed to save uploaded file: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save file")
+        print(f"Failed to save uploaded file: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
     finally:
         await file.close()
 
@@ -71,13 +104,13 @@ async def ingest_pdf(
     if size_mb > 5:  # 5 MB limit
         raise HTTPException(status_code=400, detail="File size exceeds 5 MB limit")
 
-    new_file  = models.UploadedFiles(
+    new_file = models.UploadedFiles(
         filename=file.filename,
         thread_id=thread.id,
         admin_id=current_user.id,
         file_type="pdf", 
         file_size=file_size,
-        upload_date= datetime.datetime.utcnow(), 
+        upload_date=datetime.datetime.utcnow(), 
         file_uuid=file_id
     )
 
@@ -131,18 +164,43 @@ async def image_ingest(
         raise HTTPException(status_code=400, detail="thread_id is required")
     
     job_id = str(uuid4())
-    file_id = "image" + str(uuid4()) 
-
-    path = f"{UPLOAD_DIR}/{file_id}"
+    file_id = "image_" + str(uuid4()) 
+    
+    path = f"/shared/{thread_id}/uploads/{file_id}.png"
+    
+    # Create directory
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    print(f"Created directory: {os.path.dirname(path)}")
 
     try:
+        # Read file content first
+        file_content = await file.read()
+        print(f"Read {len(file_content)} bytes from uploaded image")
+        
+        if len(file_content) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+        
+        # Write to disk
         with open(path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
+            bytes_written = f.write(file_content)
+        
+        print(f"Wrote {bytes_written} bytes to {path}")
+        
+        # Verify file exists and has content
+        if not os.path.exists(path):
+            raise HTTPException(status_code=500, detail=f"File was not created at {path}")
+        
+        actual_size = os.path.getsize(path)
+        print(f"Verified file at {path} with size {actual_size} bytes")
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Failed to save uploaded file: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save file")
+        print(f"Failed to save uploaded file: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
     finally:
         await file.close()
+        
 
     file_path = Path(path)
     file_size = file_path.stat().st_size

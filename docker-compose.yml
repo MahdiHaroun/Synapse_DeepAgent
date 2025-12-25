@@ -201,6 +201,7 @@ volumes:
   synapse-redis-data:
     driver: local
   synapse-shared:
+    name: synapse-shared  # This forces the exact name
     driver: local
 
 networks:
