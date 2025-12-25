@@ -1,0 +1,4 @@
+fpdf
+boto3
+mcp
+python-dotenv

@@ -129,7 +129,7 @@ def get_object_id_list(query: str, collection_name: str = "rag_db.test") -> str:
 
 
 
-async def add_document_to_collection(collection_name: str, document_location: str) -> str:
+async def add_document_to_collection(collection_name: str,  file_name: str , thread_id: str) -> str:
     """Add a new document to the specified MongoDB collection.
 
     Args:
@@ -145,8 +145,8 @@ async def add_document_to_collection(collection_name: str, document_location: st
     
     coll_info = AVAILABLE_COLLECTIONS[collection_name]
     collection = client[coll_info["db"]][coll_info["collection"]]
-
-
+   
+    document_location = f"/shared/{thread_id}/uploads/{file_name}"
     loader = PyPDFLoader(document_location)
     data = loader.load()
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=400, chunk_overlap=20)

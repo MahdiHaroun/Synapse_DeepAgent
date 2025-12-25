@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 class CreateScheduleRequest(BaseModel):
     schedule_name: str
     schedule_expression: str  # e.g., "cron(0 10 * * ? *)" or "rate(5 minutes), or at(yyyy-mm-ddThh:mm:ss)
-    schedule_group: Optional[str] = "synapse_schedules"
     event_description: str
     event_data: dict = {}
 
@@ -26,7 +25,6 @@ class ScheduleResponse(BaseModel):
     id: int
     schedule_name: str
     schedule_expression: str
-    schedule_group: Optional[str]
     event_description: str
     eventbridge_rule_arn: Optional[str]
     is_active: bool
@@ -63,7 +61,6 @@ async def create_new_schedule(
         event_data = {
             "schedule_name": request.schedule_name,
             "schedule_expression": request.schedule_expression,
-            "schedule_group": request.schedule_group,
             "event_description": request.event_description,
             "admin_id": current_user.id,
             "task_data": request.event_data
@@ -75,8 +72,7 @@ async def create_new_schedule(
             schedule_expression=request.schedule_expression,
             event_description=request.event_description,
             target_url=webhook_url,
-            event_data=event_data,
-            group_name=request.schedule_group
+            event_data=event_data
         )
         
         if not result['success']:
@@ -91,7 +87,6 @@ async def create_new_schedule(
             schedule_name=request.schedule_name,
             schedule_expression=request.schedule_expression,
             event_description=request.event_description,
-            schedule_group=request.schedule_group,
             event_data=request.event_data,
             eventbridge_rule_name=rule_name,
             eventbridge_rule_arn=result['rule_arn'],
@@ -124,21 +119,6 @@ async def list_schedules(
 ):
     """List all schedules for the current user"""
     schedules = db.query(models.EventBridgeSchedule).filter(
-        models.EventBridgeSchedule.admin_id == current_user.id
-    ).all()
-    
-    return schedules
-
-
-@router.get("/group/{schedule_group}", response_model=list[ScheduleResponse])
-async def get_schedules_by_group(
-    schedule_group: str,
-    db: Session = Depends(get_db),
-    current_user: models.Admin = Depends(get_current_user)
-):
-    """Get all schedules in a specific group"""
-    schedules = db.query(models.EventBridgeSchedule).filter(
-        models.EventBridgeSchedule.schedule_group == schedule_group,
         models.EventBridgeSchedule.admin_id == current_user.id
     ).all()
     
@@ -180,8 +160,7 @@ async def delete_schedule(
     
     # Delete from EventBridge
     result = eventbridge_scheduler.delete_schedule(
-        schedule.eventbridge_rule_name,
-        schedule.schedule_group or "synapse_schedules"
+        schedule.eventbridge_rule_name
     )
     
     if not result['success']:
@@ -192,39 +171,6 @@ async def delete_schedule(
     db.commit()
     
     return {"message": f"Schedule {schedule.schedule_name} deleted successfully"}
-
-
-@router.delete("/group/{schedule_group}")
-async def delete_group_and_contained_schedules(
-    schedule_group: str,
-    db: Session = Depends(get_db),
-    current_user: models.Admin = Depends(get_current_user)
-):
-    """Delete a schedule group and all contained schedules"""
-    schedules = db.query(models.EventBridgeSchedule).filter(
-        models.EventBridgeSchedule.schedule_group == schedule_group,
-        models.EventBridgeSchedule.admin_id == current_user.id
-    ).all()
-    
-    if not schedules:
-        raise HTTPException(status_code=404, detail="No schedules found in the specified group")
-    
-    for schedule in schedules:
-        # Delete from EventBridge
-        result = eventbridge_scheduler.delete_schedule(
-            schedule.eventbridge_rule_name,
-            schedule_group
-        )
-        
-        if not result['success']:
-            logger.warning(f"Failed to delete EventBridge rule: {result.get('error')}")
-        
-        # Delete from database
-        db.delete(schedule)
-    
-    db.commit()
-    
-    return {"message": f"Schedule group {schedule_group} and all contained schedules deleted successfully"}
 
 
 @router.post("/{schedule_id}/disable")
@@ -244,8 +190,7 @@ async def disable_schedule(
     
     # Disable in EventBridge
     result = eventbridge_scheduler.disable_schedule(
-        schedule.eventbridge_rule_name,
-        schedule.schedule_group or "synapse_schedules"
+        schedule.eventbridge_rule_name
     )
     
     if not result['success']:
@@ -278,8 +223,7 @@ async def enable_schedule(
     
     # Enable in EventBridge
     result = eventbridge_scheduler.enable_schedule(
-        schedule.eventbridge_rule_name,
-        schedule.schedule_group or "synapse_schedules"
+        schedule.eventbridge_rule_name
     )
     
     if not result['success']:

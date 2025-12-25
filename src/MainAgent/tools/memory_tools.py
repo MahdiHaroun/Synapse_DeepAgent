@@ -35,7 +35,16 @@ class UserInfo(TypedDict):
 
 @tool
 def get_user_info(runtime: ToolRuntime[Context]) -> str:
-    """Retrieve user information from the long-term store."""
+    """
+    
+    Retrieve stored user information (name, email, roles, and privileges) from long-term memory.
+    Use this at the beginning of conversations to understand the user's identity and permissions.
+
+    Args:
+        None
+    Returns:
+        A string summarizing the user's information.
+    """
     try:
         store = MongoDBStore(
             collection=mongo_db["synapse_agent_store"]
@@ -68,6 +77,9 @@ def save_sequence_protocol(sequence_description: str, runtime: ToolRuntime[Conte
     
     Args:
         sequence_description: Natural language description of the task sequence/protocol
+
+    Returns:
+        Confirmation message indicating success or failure.
     """
     try:
         import uuid
@@ -110,6 +122,9 @@ def search_sequence_protocols(query: str, runtime: ToolRuntime[Context]) -> str:
     
     Args:
         query: Natural language description of the task you're looking for
+
+    Returns:
+        A formatted string listing matching task sequences/protocols.
     """
     try:
         store = runtime.store

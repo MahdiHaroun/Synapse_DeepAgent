@@ -1,12 +1,17 @@
 from mcp.server import FastMCP 
 from mcp.server.fastmcp import Context
 import httpx
-from datetime import datetime
+from datetime import datetime, timedelta
 from starlette.responses import HTMLResponse
 import urllib.parse
 from dotenv import load_dotenv
 import os
 from pathlib import Path
+import logging
+from database import SessionLocal, engine, Base
+from models import CalendarToken
+
+logger = logging.getLogger(__name__)
 
 # Load .env from mounted volume
 #load_dotenv("/app/.env")
@@ -30,8 +35,138 @@ SCOPES = [
     "https://www.googleapis.com/auth/calendar.events"
 ]
 
-# Store tokens for multiple users - key is email address
-user_tokens = {}
+# Initialize database tables
+def init_db():
+    """Initialize the calendar_tokens table if it doesn't exist"""
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Calendar token storage initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize token storage: {e}")
+
+# Initialize database on startup
+init_db()
+
+def save_tokens(email: str, access_token: str, refresh_token: str, expires_in: int):
+    """Save or update tokens in the database"""
+    db = SessionLocal()
+    try:
+        expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+        
+        # Check if token exists
+        token = db.query(CalendarToken).filter(CalendarToken.email == email).first()
+        
+        if token:
+            # Update existing token
+            token.access_token = access_token
+            if refresh_token:
+                token.refresh_token = refresh_token
+            token.expires_at = expires_at
+            token.updated_at = datetime.utcnow()
+        else:
+            # Create new token
+            token = CalendarToken(
+                email=email,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expires_at=expires_at
+            )
+            db.add(token)
+        
+        db.commit()
+        logger.info(f"Tokens saved for {email}, expires at {expires_at}")
+        return True
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to save tokens for {email}: {e}")
+        return False
+    finally:
+        db.close()
+
+def get_stored_tokens(email: str):
+    """Retrieve tokens from the database"""
+    db = SessionLocal()
+    try:
+        token = db.query(CalendarToken).filter(CalendarToken.email == email).first()
+        if token:
+            return {
+                "access_token": token.access_token,
+                "refresh_token": token.refresh_token,
+                "expires_at": token.expires_at
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Failed to get tokens for {email}: {e}")
+        return None
+    finally:
+        db.close()
+
+def delete_tokens(email: str):
+    """Delete tokens from the database"""
+    db = SessionLocal()
+    try:
+        token = db.query(CalendarToken).filter(CalendarToken.email == email).first()
+        if token:
+            db.delete(token)
+            db.commit()
+            logger.info(f"Tokens deleted for {email}")
+            return True
+        return False
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to delete tokens for {email}: {e}")
+        return False
+    finally:
+        db.close()
+
+async def refresh_access_token(email: str, refresh_token: str) -> dict:
+    """Refresh the access token using the refresh token"""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "client_id": CLIENT_ID,
+                "client_secret": CLIENT_SECRET,
+                "refresh_token": refresh_token,
+                "grant_type": "refresh_token"
+            }
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            # Save the new access token
+            expires_in = data.get("expires_in", 3600)
+            save_tokens(email, data["access_token"], refresh_token, expires_in)
+            return {"access_token": data["access_token"], "success": True}
+        else:
+            # If refresh fails (e.g., refresh token revoked), delete stored tokens
+            if "invalid_grant" in response.text:
+                delete_tokens(email)
+            return {"success": False, "error": response.text}
+
+async def get_valid_token(email: str) -> str:
+    """Get a valid access token, refreshing if necessary"""
+    tokens = get_stored_tokens(email)
+    
+    if not tokens:
+        return None
+    
+    # Check if token is expired or will expire in the next 5 minutes
+    expires_at = tokens["expires_at"]
+    buffer_time = datetime.utcnow() + timedelta(minutes=5)
+    
+    if expires_at <= buffer_time:
+        # Token expired or about to expire, refresh it
+        if tokens["refresh_token"]:
+            result = await refresh_access_token(email, tokens["refresh_token"])
+            if result.get("success"):
+                return result["access_token"]
+            else:
+                return None
+        else:
+            return None
+    
+    return tokens["access_token"]
 
 @mcp.tool()
 async def generate_auth_url(email: str):
@@ -41,20 +176,24 @@ async def generate_auth_url(email: str):
     Args:
         email: the email address for the user who will the event be written for him
     """
+    # Check if user already has valid tokens
+    existing_token = await get_valid_token(email)
+    if existing_token:
+        return {"message": f"Already authenticated for {email}", "authenticated": True}
+    
     base_url = "https://accounts.google.com/o/oauth2/v2/auth"
+
+    # Check if this is a first-time authentication
+    tokens = get_stored_tokens(email)
+    prompt_value = "consent" if not tokens else "select_account"
 
     params = {
         "client_id": CLIENT_ID,
         "redirect_uri": REDIRECT_URI,
-        "response_type": "code",
-        "access_type": "offline",
-        "prompt": "consent",
-        "scope": " ".join(SCOPES),
-        "state": email
     }
 
     url = f"{base_url}?{urllib.parse.urlencode(params)}"
-    return {"auth_url": url}
+    return {"auth_url": url, "authenticated": False}
 
 @mcp.tool()
 async def check_auth_status(email: str):
@@ -64,7 +203,8 @@ async def check_auth_status(email: str):
     Args:
         email: User's email address
     """
-    if email in user_tokens and user_tokens[email].get("access_token"):
+    token = await get_valid_token(email)
+    if token:
         return {"authenticated": True, "email": email}
     return {"authenticated": False, "email": email}
 
@@ -76,9 +216,10 @@ async def revoke_access(email: str):
     Args:
         email: User's email address to revoke
     """
-    if email in user_tokens:
-        # Optionally, revoke the token with Google
-        access_token = user_tokens[email].get("access_token")
+    tokens = get_stored_tokens(email)
+    if tokens:
+        # Revoke the token with Google
+        access_token = tokens.get("access_token")
         if access_token:
             async with httpx.AsyncClient() as client:
                 try:
@@ -89,8 +230,8 @@ async def revoke_access(email: str):
                 except Exception:
                     pass  # Continue even if revoke fails
         
-        # Remove from local storage
-        del user_tokens[email]
+        # Remove from database
+        delete_tokens(email)
         return {"success": True, "message": f"Access revoked for {email}"}
     return {"success": False, "message": f"No authentication found for {email}"}
 
@@ -118,10 +259,13 @@ async def handle_oauth_callback(ctx: Context):
         
         if response.status_code == 200:
             data = response.json()
-            user_tokens[email] = {
-                "access_token": data.get("access_token"),
-                "refresh_token": data.get("refresh_token")
-            }
+            access_token = data.get("access_token")
+            refresh_token = data.get("refresh_token")
+            expires_in = data.get("expires_in", 3600)
+            
+            # Save tokens to database with expiry time
+            save_tokens(email, access_token, refresh_token, expires_in)
+            
             return HTMLResponse(f"<h1>Success! {email} authenticated. You can close this window now.</h1>")
         else:
             return HTMLResponse(f"<h1>Error: {response.text}</h1>", status_code=400)
@@ -135,10 +279,10 @@ async def list_calendar_events(email: str, max_events: int = 10):
         email: User's email address
         max_events: Maximum number of events to return
     """
-    if email not in user_tokens or not user_tokens[email].get("access_token"):
+    access_token = await get_valid_token(email)
+    if not access_token:
         return {"error": f"User {email} not authenticated. Please use generate_auth_url() first"}
     
-    access_token = user_tokens[email]["access_token"]
     now = datetime.utcnow().isoformat() + "Z"
     
     async with httpx.AsyncClient() as client:
@@ -185,10 +329,9 @@ async def add_calendar_event(
         location: Event location (optional)
         organizer_email: Organizer's email address (optional)
     """
-    if email not in user_tokens or not user_tokens[email].get("access_token"):
+    access_token = await get_valid_token(email)
+    if not access_token:
         return {"error": f"User {email} not authenticated. Please use generate_auth_url() first"}
-    
-    access_token = user_tokens[email]["access_token"]
     
     event_data = {
         "summary": title,
@@ -241,10 +384,9 @@ async def delete_calendar_event(email: str, event_id: str):
         email: User's email address
         event_id: The ID of the event to delete
     """
-    if email not in user_tokens or not user_tokens[email].get("access_token"):
+    access_token = await get_valid_token(email)
+    if not access_token:
         return {"error": f"User {email} not authenticated. Please use generate_auth_url() first"}
-    
-    access_token = user_tokens[email]["access_token"]
     
     async with httpx.AsyncClient() as client:
         response = await client.delete(
@@ -260,6 +402,7 @@ async def delete_calendar_event(email: str, event_id: str):
 
 # Run the server
 if __name__ == "__main__":
+    Base.metadata.create_all(bind=engine)
     mcp.run(transport="sse")
 
 

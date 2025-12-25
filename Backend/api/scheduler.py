@@ -27,8 +27,7 @@ class EventBridgeScheduler:
         schedule_expression: str,
         event_description: str,
         target_url: str,
-        event_data: dict,
-        group_name: str = "synapse_schedules"
+        event_data: dict
     ) -> dict:
         """Create EventBridge Schedule with Lambda target"""
         try:
@@ -64,7 +63,6 @@ class EventBridgeScheduler:
                 ScheduleExpression=schedule_expression,
                 ScheduleExpressionTimezone = "Asia/Amman",
                 Description=event_description,
-                GroupName=group_name,
                 State='ENABLED',
                 FlexibleTimeWindow={'Mode': 'OFF'},
                 Target={
@@ -93,14 +91,13 @@ class EventBridgeScheduler:
 
 
     
-    def delete_schedule(self, rule_name: str, group_name: str = "synapse_schedules") -> dict:
+    def delete_schedule(self, rule_name: str) -> dict:
         """Delete an EventBridge schedule"""
         try:
             self.scheduler_client.delete_schedule(
-                Name=rule_name,
-                GroupName=group_name
+                Name=rule_name
             )
-            logger.info(f"Deleted schedule: {rule_name} from group: {group_name}")
+            logger.info(f"Deleted schedule: {rule_name}")
             
             return {
                 'success': True,
@@ -134,19 +131,17 @@ class EventBridgeScheduler:
             logger.error(f"Error listing schedules: {e}")
             return []
     
-    def enable_schedule(self, rule_name: str, group_name: str = "synapse_schedules") -> dict:
+    def enable_schedule(self, rule_name: str) -> dict:
         """Enable a disabled schedule"""
         try:
             # Get existing schedule details
             existing = self.scheduler_client.get_schedule(
-                Name=rule_name,
-                GroupName=group_name
+                Name=rule_name
             )
             
             # Update with new state
             self.scheduler_client.update_schedule(
                 Name=rule_name,
-                GroupName=group_name,
                 ScheduleExpression=existing['ScheduleExpression'],
                 ScheduleExpressionTimezone=existing.get('ScheduleExpressionTimezone', 'Asia/Amman'),
                 FlexibleTimeWindow=existing['FlexibleTimeWindow'],
@@ -154,25 +149,23 @@ class EventBridgeScheduler:
                 State='ENABLED',
                 Description=existing.get('Description', '')
             )
-            logger.info(f"Enabled schedule: {rule_name} in group: {group_name}")
+            logger.info(f"Enabled schedule: {rule_name}")
             return {'success': True, 'message': f'Schedule enabled: {rule_name}'}
         except Exception as e:
             logger.error(f"Error enabling schedule: {e}")
             return {'success': False, 'error': str(e)}
     
-    def disable_schedule(self, rule_name: str, group_name: str = "synapse_schedules") -> dict:
+    def disable_schedule(self, rule_name: str) -> dict:
         """Disable a schedule without deleting it"""
         try:
             # Get existing schedule details
             existing = self.scheduler_client.get_schedule(
-                Name=rule_name,
-                GroupName=group_name
+                Name=rule_name
             )
             
             # Update with new state
             self.scheduler_client.update_schedule(
                 Name=rule_name,
-                GroupName=group_name,
                 ScheduleExpression=existing['ScheduleExpression'],
                 ScheduleExpressionTimezone=existing.get('ScheduleExpressionTimezone', 'Asia/Amman'),
                 FlexibleTimeWindow=existing['FlexibleTimeWindow'],
@@ -180,7 +173,7 @@ class EventBridgeScheduler:
                 State='DISABLED',
                 Description=existing.get('Description', '')
             )
-            logger.info(f"Disabled schedule: {rule_name} in group: {group_name}")
+            
             return {'success': True, 'message': f'Schedule disabled: {rule_name}'}
         except Exception as e:
             logger.error(f"Error disabling schedule: {e}")

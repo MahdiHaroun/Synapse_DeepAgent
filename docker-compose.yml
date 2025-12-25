@@ -163,6 +163,23 @@ services:
       - synapse-network
     restart: unless-stopped
 
+  mcp-file-management:
+      build:
+        context: ./Backend/mcp/folders_server
+        dockerfile: Dockerfile
+      container_name: synapse-mcp-file-management
+      env_file:
+        - .env
+      ports:
+        - "3005:3005"
+      volumes:
+        - synapse-shared:/shared
+        - ./.env:/app/.env:ro
+        
+      networks:
+        - synapse-network
+      restart: unless-stopped
+
   # Redis Server
   redis:
     image: redis:7-alpine

@@ -2,3 +2,5 @@ mcp
 httpx
 starlette
 python-dotenv
+sqlalchemy
+psycopg2-binary

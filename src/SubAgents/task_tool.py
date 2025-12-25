@@ -92,6 +92,7 @@ def _create_task_tool(tools, subagents: list[SubAgent], model, state_schema):
         thread_id = state.get("thread_id" , "1111")  
 
         description += f"\n\nConversation Thread ID: {thread_id}"
+        
         print("Delegating to sub-agent:", subagent_type, "with thread ID:", thread_id , "the description is :" , description)
 
         # Create isolated context with only the task description

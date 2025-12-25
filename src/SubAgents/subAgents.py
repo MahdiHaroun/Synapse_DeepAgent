@@ -3,16 +3,17 @@ import yaml
 import asyncio
 
 from src.Prompts.prompts import (
-    DB_AGENT_INSTRUCTIONS,
+    DB_ACTIONS_INSTRUCTIONS,
     DB_ANALYZER_AGENT_INSTRUCTIONS,
-    EXTERNAL_COMMUNICATION_AGENT_INSTRUCTIONS,
+    GMAIL_INSTRUCTIONS,
     AWS_S3_AGENT_INSTRUCTIONS,
     ANALYSIS_AGENT_INSTRUCTIONS,
     CALENDAR_AGENT_INSTRUCTIONS,
     AUTH_AGENT_INSTRUCTIONS,
     WEB_SEARCH_AGENT_INSTRUCTIONS,
     RAG_AGENT_INSTRUCTIONS,
-    SCHEDULE_AGENT_INSTRUCTIONS
+    SCHEDULE_AGENT_INSTRUCTIONS,
+    FILE_MANAGEMENT_AGENT_INSTRUCTIONS
 )
 from src.SubAgents.task_tool import _create_task_tool
 from src.MCP.mcp import all_mcp_tools
@@ -39,7 +40,7 @@ class SubAgents:
         DB_sub_agent = {
             "name": "Database_Agent",
             "description": "Delegate DB_Operations to the sub-agent DB. Only give this Agent one Task at the time.",
-            "prompt": DB_AGENT_INSTRUCTIONS,
+            "prompt": DB_ACTIONS_INSTRUCTIONS,
             "tools": [tool.name for tool in filtered__db_tools]  
         }
         return DB_sub_agent
@@ -61,20 +62,20 @@ class SubAgents:
         }
         return DB_analyzer_agent
     
-    async def create_External_Communication_Agent(self):
-        with open("src/SubAgents/configs/EC.yaml"  ,  "r", encoding="utf-8") as f:
+    async def create_Gmail_Agent(self):
+        with open("src/SubAgents/configs/gmail.yaml"  ,  "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
         tool_names = []
         if isinstance(config, list) and len(config) > 0:
             tool_names = config[0].get("tools", [])
-        filtered_ec_tools = [tool for tool in all_mcp_tools if tool.name in tool_names]
-        EC_agent = {
-            "name": "External_Communication_Agent",
-            "description": "Delegate External_Communication tasks to the sub-agent EC. Only give this Agent one Task at the time.",
-            "prompt": EXTERNAL_COMMUNICATION_AGENT_INSTRUCTIONS,
-            "tools": [tool.name for tool in filtered_ec_tools] 
+        filtered_gmail_tools = [tool for tool in all_mcp_tools if tool.name in tool_names]
+        Gmail_agent = {
+            "name": "Gmail_Agent",
+            "description": "Delegate External_Communication tasks to the sub-agent Gmail. Only give this Agent one Task at the time.",
+            "prompt": GMAIL_INSTRUCTIONS,
+            "tools": [tool.name for tool in filtered_gmail_tools] 
         }
-        return EC_agent
+        return Gmail_agent
     
     async def create_AWS_S3_Agent(self):
         with open("src/SubAgents/configs/aws_s3.yaml"  ,  "r", encoding="utf-8") as f:
@@ -182,7 +183,21 @@ class SubAgents:
             "tools": [tool.name for tool in filtered_scheduler_tools]  
         }
         return Scheduler_agent
-
+    
+    async def create_file_management_agent(self):
+        with open("src/SubAgents/configs/documents.yaml"  ,  "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        tool_names = []
+        if isinstance(config, list) and len(config) > 0:
+            tool_names = config[0].get("tools", [])
+        filtered_file_management_tools = [tool for tool in all_mcp_tools if tool.name in tool_names]
+        File_Management_agent = {
+            "name": "File_Management_Agent",
+            "description": "Delegate File Management tasks to the sub-agent File_Management. Only give this Agent one Task at the time.",
+            "prompt": FILE_MANAGEMENT_AGENT_INSTRUCTIONS,
+            "tools": [tool.name for tool in filtered_file_management_tools]  
+        }
+        return File_Management_agent
     
     async def sub_agent_tools(self):
         # Return all MCP tools for sub-agents to use
@@ -192,7 +207,7 @@ class SubAgents:
     async def create_task_tool(self):
         DB_sub_agent = await self.create_DB_Explorer_Agent()
         DB_analyzer_agent = await self.create_DB_Analyzer_Agent()
-        EC_agent = await self.create_External_Communication_Agent()
+        Gmail_agent = await self.create_Gmail_Agent()
         Calendar_agent = await self.create_calendar_agent()
         AWS_S3_agent = await self.create_AWS_S3_Agent()
         analysis_agent = await self.create_Analysis_Agent()
@@ -200,12 +215,13 @@ class SubAgents:
         Web_Search_agent = await self.create_Web_Search_Agent()
         RAG_agent = await self.create_rag_agent()
         Scheduler_agent = await self.create_scheduler_agent()
+        File_Management_agent = await self.create_file_management_agent()
 
         sub_agent_tools = await self.sub_agent_tools()
 
         task_tool = _create_task_tool(
             tools=sub_agent_tools,
-            subagents=[DB_sub_agent , DB_analyzer_agent, EC_agent , AWS_S3_agent , analysis_agent , Calendar_agent, Auth_agent, Web_Search_agent, RAG_agent , Scheduler_agent],
+            subagents=[DB_sub_agent , DB_analyzer_agent, Gmail_agent , AWS_S3_agent , analysis_agent , Calendar_agent, Auth_agent, Web_Search_agent, RAG_agent , Scheduler_agent , File_Management_agent],
             model=openai_gpt4_llm,
             state_schema=DeepAgentState
         )

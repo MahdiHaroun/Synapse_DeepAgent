@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-UPLOAD_DIR = "/tmp/uploads/{thread_id}"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR = "/shared/{thread_id}/uploads"
+
 
 @router.post("/ingest/pdf/{thread_id}")
 async def ingest_pdf(
@@ -131,9 +131,9 @@ async def image_ingest(
         raise HTTPException(status_code=400, detail="thread_id is required")
     
     job_id = str(uuid4())
-    file_id = file.filename.replace(".","_") + "_" + str(uuid4()) 
+    file_id = "image" + str(uuid4()) 
 
-    path = f"{UPLOAD_DIR}/{file_id}_{file.filename}"
+    path = f"{UPLOAD_DIR}/{file_id}"
 
     try:
         with open(path, "wb") as f:

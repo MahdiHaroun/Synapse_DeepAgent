@@ -27,7 +27,8 @@ mcp = FastMCP("Schedule" , host="0.0.0.0", port=3070)
 async def send_email_from_schedule_jobs(
     subject: str,
     html_content: str,
-    s3_key: str = None
+    file_name: str = None,
+    thread_id: str = "schedule_jobs",
 ):
     """
     Send an email with optional attachment using Resend.
@@ -42,20 +43,16 @@ async def send_email_from_schedule_jobs(
     attachment_content = None
     filename = None
     
-    # Download attachment from S3 if s3_key is provided
-    if s3_key:
-        s3 = boto3.client("s3", region_name="eu-central-1")
-        bucket_name = "synapse-openapi-schemas"
-        
-        try:
-            # Download file content to memory
-            response = s3.get_object(Bucket=bucket_name, Key=s3_key)
-            attachment_content = response['Body'].read()
-            filename = os.path.basename(s3_key)
-        except s3.exceptions.NoSuchKey:
-            return {"success": False, "error": f"File not found in S3: {s3_key}"}
-        except Exception as e:
-            return {"success": False, "error": f"Failed to download from S3: {str(e)}"}
+    
+  
+    file_path= f"/shared/{thread_id}/{file_name}"
+
+    if file_name and os.path.exists(file_path):
+        with open(file_path, "rb") as f:
+            attachment_content = f.read()
+            filename = file_name
+    elif file_name:
+        return {"success": False, "error": "Attachment file not found"}
 
     params = {
         "from": "noreply@optichoice.me",
@@ -72,7 +69,7 @@ async def send_email_from_schedule_jobs(
             "filename": filename,
             "content": attachment_base64
         }]
-    elif s3_key:
+    elif file_name:
         return {"success": False, "error": "Failed to prepare attachment"}
     
     try:

@@ -8,7 +8,6 @@ from prophet import Prophet
 import boto3 
 import io
 from dotenv import load_dotenv
-import os
 from pathlib import Path
 
 mcp = FastMCP("analysis-tools" , host="0.0.0.0", port=3040)
@@ -78,8 +77,9 @@ def create_bar_chart(thread_id: str, data: str, x_col: str, y_col: str, title: s
     plt.savefig(img_buffer, format="png", bbox_inches="tight")
     plt.close()
 
-    # Reset buffer pointer
+    # Read buffer data once
     img_buffer.seek(0)
+    img_data = img_buffer.read()
 
     # Prepare S3 client
     s3 = boto3.client("s3", region_name="eu-central-1")
@@ -89,8 +89,16 @@ def create_bar_chart(thread_id: str, data: str, x_col: str, y_col: str, title: s
     filename = f"{title.replace(' ', '_')}_bar_chart.png"
     s3_key = f"{thread_id}/{filename}"
 
-    # Upload from in-memory buffer
-    s3.upload_fileobj(img_buffer, bucket_name, s3_key)
+    # Upload to S3 using bytes
+    s3.put_object(Bucket=bucket_name, Key=s3_key, Body=img_data, ContentType='image/png')
+    
+    # Write to local file using same bytes
+    file_path = f"/shared/{thread_id}/analysis_images/{filename}"
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "wb") as f:
+        f.write(img_data)
+
+    
 
     # Generate presigned URL
     presigned_url = s3.generate_presigned_url(
@@ -99,9 +107,15 @@ def create_bar_chart(thread_id: str, data: str, x_col: str, y_col: str, title: s
         ExpiresIn=3600
     )
 
+    # Relative path for PDF creation (relative to /shared/{thread_id}/)
+    relative_path = f"analysis_images/{filename}"
+
     return {
         "presigned_url": presigned_url,
-        "s3_key": s3_key
+        "s3_key": s3_key,
+        "file_path": file_path,
+        "relative_path": relative_path,
+        "message": f"Chart created and saved to {file_path}. Use relative_path '{relative_path}' for PDF creation."
     }
 
 
@@ -127,8 +141,9 @@ def create_pie_chart(thread_id: str, data: str, labels_col: str, values_col: str
     plt.savefig(img_buffer, format="png", bbox_inches="tight")
     plt.close()
 
-    # Reset buffer pointer
+    # Read buffer data once
     img_buffer.seek(0)
+    img_data = img_buffer.read()
 
     # Prepare S3 client
     s3 = boto3.client("s3", region_name="eu-central-1")
@@ -138,8 +153,14 @@ def create_pie_chart(thread_id: str, data: str, labels_col: str, values_col: str
     filename = f"{title.replace(' ', '_')}_pie_chart.png"
     s3_key = f"{thread_id}/{filename}"
 
-    # Upload in-memory buffer to S3
-    s3.upload_fileobj(img_buffer, bucket_name, s3_key)
+    # Upload to S3 using bytes
+    s3.put_object(Bucket=bucket_name, Key=s3_key, Body=img_data, ContentType='image/png')
+
+    # Write to local file using same bytes
+    file_path = f"/shared/{thread_id}/analysis_images/{filename}"
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "wb") as f:
+        f.write(img_data)
 
     # Generate presigned URL
     presigned_url = s3.generate_presigned_url(
@@ -148,9 +169,14 @@ def create_pie_chart(thread_id: str, data: str, labels_col: str, values_col: str
         ExpiresIn=3600
     )
 
+    relative_path = f"analysis_images/{filename}"
+
     return {
         "presigned_url": presigned_url,
-        "s3_key": s3_key
+        "s3_key": s3_key,
+        "file_path": file_path,
+        "relative_path": relative_path,
+        "message": f"Chart created and saved to {file_path}. Use relative_path '{relative_path}' for PDF creation."
     }
 
 
@@ -175,8 +201,9 @@ def create_line_chart(thread_id: str, data: str, x_col: str, y_col: str, title: 
     plt.savefig(img_buffer, format="png", bbox_inches="tight")
     plt.close()
 
-    # Reset buffer pointer
+    # Read buffer data once
     img_buffer.seek(0)
+    img_data = img_buffer.read()
 
     # Prepare S3 client
     s3 = boto3.client("s3", region_name="eu-central-1")
@@ -186,8 +213,14 @@ def create_line_chart(thread_id: str, data: str, x_col: str, y_col: str, title: 
     filename = f"{title.replace(' ', '_')}_line_chart.png"
     s3_key = f"{thread_id}/{filename}"
 
-    # Upload from in-memory buffer
-    s3.upload_fileobj(img_buffer, bucket_name, s3_key)
+    # Upload to S3 using bytes
+    s3.put_object(Bucket=bucket_name, Key=s3_key, Body=img_data, ContentType='image/png')
+
+    # Write to local file using same bytes
+    file_path = f"/shared/{thread_id}/analysis_images/{filename}"
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "wb") as f:
+        f.write(img_data)
 
     # Generate presigned URL
     presigned_url = s3.generate_presigned_url(
@@ -196,9 +229,14 @@ def create_line_chart(thread_id: str, data: str, x_col: str, y_col: str, title: 
         ExpiresIn=3600
     )
 
+    relative_path = f"analysis_images/{filename}"
+
     return {
         "presigned_url": presigned_url,
-        "s3_key": s3_key
+        "s3_key": s3_key,
+        "file_path": file_path,
+        "relative_path": relative_path,
+        "message": f"Chart created and saved to {file_path}. Use relative_path '{relative_path}' for PDF creation."
     }
 
 
@@ -218,18 +256,36 @@ def create_scatter_chart(thread_id: str, data: str, x_col: str, y_col: str, titl
     plt.title(title)
     plt.savefig(img_buffer, format="png", bbox_inches="tight")
     plt.close()
+    
+    # Read buffer data once
     img_buffer.seek(0)
+    img_data = img_buffer.read()
 
     s3 = boto3.client("s3", region_name="eu-central-1")
     bucket_name = "synapse-openapi-schemas"
     filename = f"{title.replace(' ', '_')}_scatter_chart.png"
     s3_key = f"{thread_id}/{filename}"
-    s3.upload_fileobj(img_buffer, bucket_name, s3_key)
+    
+    # Upload to S3 using bytes
+    s3.put_object(Bucket=bucket_name, Key=s3_key, Body=img_data, ContentType='image/png')
+
+    # Write to local file using same bytes
+    file_path = f"/shared/{thread_id}/analysis_images/{filename}"
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "wb") as f:
+        f.write(img_data)
 
     presigned_url = s3.generate_presigned_url(
         "get_object", Params={"Bucket": bucket_name, "Key": s3_key}, ExpiresIn=3600
     )
-    return {"presigned_url": presigned_url, "s3_key": s3_key}
+    relative_path = f"analysis_images/{filename}"
+    return {
+        "presigned_url": presigned_url,
+        "s3_key": s3_key,
+        "file_path": file_path,
+        "relative_path": relative_path,
+        "message": f"Chart created and saved to {file_path}. Use relative_path '{relative_path}' for PDF creation."
+    }
 
 @mcp.tool()
 def create_histogram(thread_id: str, data: str, column: str, title: str, bins: int = 10) -> dict:
@@ -245,18 +301,36 @@ def create_histogram(thread_id: str, data: str, column: str, title: str, bins: i
     plt.title(title)
     plt.savefig(img_buffer, format="png", bbox_inches="tight")
     plt.close()
+    
+    # Read buffer data once
     img_buffer.seek(0)
+    img_data = img_buffer.read()
 
     s3 = boto3.client("s3", region_name="eu-central-1")
     bucket_name = "synapse-openapi-schemas"
     filename = f"{title.replace(' ', '_')}_histogram.png"
     s3_key = f"{thread_id}/{filename}"
-    s3.upload_fileobj(img_buffer, bucket_name, s3_key)
+    
+    # Upload to S3 using bytes
+    s3.put_object(Bucket=bucket_name, Key=s3_key, Body=img_data, ContentType='image/png')
+
+    # Write to local file using same bytes
+    file_path = f"/shared/{thread_id}/analysis_images/{filename}"
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "wb") as f:
+        f.write(img_data)
 
     presigned_url = s3.generate_presigned_url(
         "get_object", Params={"Bucket": bucket_name, "Key": s3_key}, ExpiresIn=3600
     )
-    return {"presigned_url": presigned_url, "s3_key": s3_key}
+    relative_path = f"analysis_images/{filename}"
+    return {
+        "presigned_url": presigned_url,
+        "s3_key": s3_key,
+        "file_path": file_path,
+        "relative_path": relative_path,
+        "message": f"Chart created and saved to {file_path}. Use relative_path '{relative_path}' for PDF creation."
+    }
 
 
 
@@ -269,25 +343,42 @@ def create_box_plot(thread_id: str, data: str, x_col: str, y_col: str, title: st
     """
     df = to_df(data)
     
-
     img_buffer = io.BytesIO()
     plt.figure(figsize=(10, 6))
     sns.boxplot(data=df, x=x_col, y=y_col)
     plt.title(title)
     plt.savefig(img_buffer, format="png", bbox_inches="tight")
     plt.close()
+    
+    # Read buffer data once
     img_buffer.seek(0)
+    img_data = img_buffer.read()
 
     s3 = boto3.client("s3", region_name="eu-central-1")
     bucket_name = "synapse-openapi-schemas"
     filename = f"{title.replace(' ', '_')}_box_plot.png"
     s3_key = f"{thread_id}/{filename}"
-    s3.upload_fileobj(img_buffer, bucket_name, s3_key)
+    
+    # Upload to S3 using bytes
+    s3.put_object(Bucket=bucket_name, Key=s3_key, Body=img_data, ContentType='image/png')
+
+    # Write to local file using same bytes
+    file_path = f"/shared/{thread_id}/analysis_images/{filename}"
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "wb") as f:
+        f.write(img_data)
 
     presigned_url = s3.generate_presigned_url(
         "get_object", Params={"Bucket": bucket_name, "Key": s3_key}, ExpiresIn=3600
     )
-    return {"presigned_url": presigned_url, "s3_key": s3_key}
+    relative_path = f"analysis_images/{filename}"
+    return {
+        "presigned_url": presigned_url,
+        "s3_key": s3_key,
+        "file_path": file_path,
+        "relative_path": relative_path,
+        "message": f"Chart created and saved to {file_path}. Use relative_path '{relative_path}' for PDF creation."
+    }
 
 
 

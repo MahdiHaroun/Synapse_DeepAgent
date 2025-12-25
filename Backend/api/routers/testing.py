@@ -96,21 +96,14 @@ async def test_chat(
                 detail="Thread not found or access denied"
             )
         
-        # Get file IDs for this thread
-        file_ids = retrieve_file_ids_for_thread(request.thread_id, db)
-        
-        # Build file context
-        file_context = get_file_context(file_ids, db)
-        
-        # Enhance message with file context
-        enhanced_message = request.message + file_context
+    
         
         # Create Context object
         context = Context(
             user_id=str(current_user.id),
-            user_name=current_user.name,
+            user_name=current_user.username,
             thread_id=request.thread_id,
-            files_ids=file_ids,
+            files_ids=[],
             images_ids=[]
         )
         
@@ -119,7 +112,7 @@ async def test_chat(
         
         # Invoke agent (blocking, no streaming)
         result = await main_agent.ainvoke(
-            {"messages": [{"role": "user", "content": enhanced_message}]},
+            {"messages": [{"role": "user", "content": request.message}]},
             config={"configurable": {"thread_id": request.thread_id}},
             context=context
         )
@@ -153,7 +146,7 @@ async def test_chat(
                 detail="No response generated from agent"
             )
         
-        logger.info(f"Test chat completed - Thread: {request.thread_id}, Files: {len(file_ids)}")
+        logger.info(f"Test chat completed - Thread: {request.thread_id}, User: {current_user.name}")    
         
         return ChatResponse(
             response=final_response,
@@ -174,65 +167,6 @@ async def test_chat(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred: {str(e)}"
         )
-
-
-@router.post("/upload-and-chat")
-async def test_upload_and_chat(
-    message: str = Form(...),
-    thread_id: str = Form(...),
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: models.Admin = Depends(auth.get_current_user)
-):
-    """
-    Testing endpoint: Upload file to thread, then chat.
-    
-    1. Validates thread ownership
-    2. Uploads file using ingestion pipeline
-    3. Waits for ingestion to complete
-    4. Invokes chat with file context
-    """
-    try:
-        # Validate thread
-        thread = db.query(models.Thread).filter(
-            models.Thread.uuid == thread_id,
-            models.Thread.admin_id == current_user.id
-        ).first()
-        
-        if not thread:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Thread not found"
-            )
-        
-        # Upload file
-        logger.info(f"Uploading file: {file.filename} to thread: {thread_id}")
-        
-        job_id = await ingest_pipeline(
-            file=file,
-            thread_id=thread_id,
-            user_id=current_user.id,
-            db=db
-        )
-        
-        logger.info(f"File uploaded, job_id: {job_id}")
-        
-        # Wait a bit for ingestion to complete
-        await asyncio.sleep(2)
-        
-        # Now chat with the file
-        chat_request = ChatRequest(message=message, thread_id=thread_id)
-        return await test_chat(chat_request, db, current_user)
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in test_upload_and_chat: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred: {str(e)}"
-        )
-
 
 
 

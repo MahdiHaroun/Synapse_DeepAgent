@@ -127,14 +127,18 @@ async def download_object(thread_id: str, bucket_name: str, object_key: str) -> 
         os.makedirs("saved_downloads", exist_ok=True)
 
         # Replace slashes for safe local filename
-        download_path = f"saved_downloads/{s3_key.replace('/', '_')}"
+
+
+        download_path = f"/shared/{thread_id}/saved_downloads/{object_key.replace('/', '_')}"
+
+        os.makedirs(os.path.dirname(download_path), exist_ok=True)
 
         s3.download_file(bucket_name, s3_key, download_path)
 
         return {
             "message": f"Downloaded s3://{bucket_name}/{s3_key} to {download_path}",
             "local_path": download_path,
-            "s3_key": s3_key
+            
         }
 
     except ClientError as e:
@@ -143,37 +147,62 @@ async def download_object(thread_id: str, bucket_name: str, object_key: str) -> 
     
 
 @mcp.tool()
-async def download_object_by_url(presigned_url: str, download_path: str):
+async def download_object_by_url(presigned_url: str , thread_id: str) -> dict:
     """
-    Download an S3 object using a presigned URL to a local file.
+    Download an S3 object using a presigned URL to a shared volume.
     """
+    import os
     import requests
+    from urllib.parse import urlparse
+
     try:
-        response = requests.get(presigned_url)
-        response.raise_for_status()
-        with open(download_path, 'wb') as f:
-            f.write(response.content)
+        # Extract filename safely
+        parsed = urlparse(presigned_url)
+        filename = parsed.path.split("/")[-1]
+
+        download_path = f"/shared/{thread_id}/saved_downloads/{filename}"
+
+        os.makedirs(os.path.dirname(download_path), exist_ok=True)
+
+        with requests.get(presigned_url, stream=True) as r:
+            r.raise_for_status()
+            with open(download_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
         return {"message": f"Object downloaded to {download_path}"}
-    except requests.RequestException as e:
+
+    except Exception as e:
         return {"error": str(e)}
-    
 
 
 @mcp.tool()
-async def upload_object(thread_id: str, bucket_name: str, object_key: str, file_path: str):
+async def upload_object(thread_id: str, object_key: str, relative_path: str):
     """
     Upload a local file to an S3 bucket under a specific thread_id folder.
-    Resulting path: bucket_name/thread_id/object_key
+    
+    Args:
+        thread_id: Thread ID for organizing files
+        object_key: Desired S3 object key (filename in S3)
+        relative_path: Path relative to /shared/{thread_id}/ (e.g., 'documents/file.pdf', 'analysis_images/chart.png', 'saved_downloads/data.xlsx')
+    
+    Resulting S3 path: bucket_name/thread_id/object_key
     """
     try:
-        # Always upload inside bucket/thread_id/
+        bucket_name = "synapse-openapi-schemas"
+    
         s3_key = f"{thread_id}/{object_key}"
-
+        file_path = f"/shared/{thread_id}/{relative_path}"
+        
+        if not os.path.exists(file_path):
+            return {"error": f"File not found at {file_path}"}
+        
         s3.upload_file(file_path, bucket_name, s3_key)
 
         return {
             "message": f"File uploaded to s3://{bucket_name}/{s3_key}",
-            "key": s3_key
+            "s3_key": s3_key,
+            "source_path": file_path
         }
 
     except ClientError as e:

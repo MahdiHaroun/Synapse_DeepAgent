@@ -27,19 +27,22 @@ def generate_otp():
 
 
 @mcp.tool()
-async def clear_all_otps():
-    """Clear all stored OTPs (for testing purposes)"""
-    # Delete all keys matching otp:*
-    keys = redis_client.keys("otp:*")
-    if keys:
-        redis_client.delete(*keys)
-    return {"status": f"Cleared {len(keys)} OTPs from Redis"}
+async def clear_all_otps(email: str):
+    """Clear all stored OTPs for a specific email (testing only)"""
+
+    # Build Redis key for this email
+    key = f"otp:{email.lower().strip()}"
+
+    if redis_client.exists(key):
+        redis_client.delete(key)
+        return {"status": f"Cleared OTP for {email}"}
+
+    return {"status": f"No OTP found for {email}"}
 
 @mcp.tool()
-async def send_otp(action: str):
+async def send_otp(action: str, email: str):
     """Generate and send OTP to user's email"""
     
-    email = "mahdiharoun44@gmail.com"
     otp = generate_otp()
     
     # Store in Redis with 5 minute expiration
@@ -59,7 +62,7 @@ async def send_otp(action: str):
 
 
 @mcp.tool()
-def verify_otp(otp: str, email: str = "mahdiharoun44@gmail.com") -> dict:
+def verify_otp(otp: str, email: str) -> dict:
     """
     Verify provided OTP code.
     

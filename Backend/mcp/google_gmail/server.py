@@ -14,7 +14,14 @@ from email import encoders
 import mimetypes
 import io
 import boto3
-import resend
+from datetime import datetime, timedelta
+import logging
+from database import SessionLocal, engine, Base
+from models import GmailToken
+import os
+import httpx
+
+logger = logging.getLogger(__name__)
 
 # Load .env from mounted volume
 #load_dotenv("/app/.env")
@@ -55,22 +62,104 @@ SCOPES = [
 ]
 
 # Default user email
-DEFAULT_USER_EMAIL = "mahdiharoun44@gmail.com"
+#DEFAULT_USER_EMAIL = "mahdiharoun44@gmail.com"
 
-# Store tokens - single user setup
-user_tokens = {}
+# Initialize database tables
+def init_token_storage():
+    """Create gmail_tokens table if it doesn't exist"""
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Gmail token storage initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize token storage: {e}")
+
+# Initialize on startup
+init_token_storage()
 
 # Validate credentials on startup
 if not CLIENT_ID or not CLIENT_SECRET:
     print("WARNING: GOOGLE_GMAIL_CLIENT_ID or GOOGLE_GMAIL_CLIENT_SECRET not set in environment variables!")
     print("Please set these variables in your .env file for Gmail authentication to work.")
 
+def save_tokens(email: str, access_token: str, refresh_token: str, expires_in: int):
+    """Save tokens to database with expiry timestamp"""
+    db = SessionLocal()
+    try:
+        expires_at = datetime.now() + timedelta(seconds=expires_in)
+        
+        # Check if token exists
+        token = db.query(GmailToken).filter(GmailToken.email == email).first()
+        
+        if token:
+            # Update existing token
+            token.access_token = access_token
+            token.refresh_token = refresh_token
+            token.expires_at = expires_at
+            token.updated_at = datetime.now()
+        else:
+            # Create new token
+            token = GmailToken(
+                email=email,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expires_at=expires_at
+            )
+            db.add(token)
+        
+        db.commit()
+        logger.info(f"Tokens saved for {email}, expires at {expires_at}")
+        return True
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to save tokens for {email}: {e}")
+        return False
+    finally:
+        db.close()
+
+def get_stored_tokens(email: str):
+    """Retrieve tokens from database"""
+    db = SessionLocal()
+    try:
+        token = db.query(GmailToken).filter(GmailToken.email == email).first()
+        if token:
+            return {
+                "access_token": token.access_token,
+                "refresh_token": token.refresh_token,
+                "expires_at": token.expires_at
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Failed to get tokens for {email}: {e}")
+        return None
+    finally:
+        db.close()
+
+def delete_tokens(email: str):
+    """Delete tokens from database"""
+    db = SessionLocal()
+    try:
+        token = db.query(GmailToken).filter(GmailToken.email == email).first()
+        if token:
+            db.delete(token)
+            db.commit()
+            logger.info(f"Tokens deleted for {email}")
+            return True
+        return False
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to delete tokens for {email}: {e}")
+        return False
+    finally:
+        db.close()
+
 async def refresh_access_token(email: str):
     """Refresh the access token using the refresh token"""
-    if email not in user_tokens or not user_tokens[email].get("refresh_token"):
+    tokens = get_stored_tokens(email)
+    if not tokens or not tokens.get("refresh_token"):
+        logger.warning(f"No refresh token found for {email}")
         return False
     
-    refresh_token = user_tokens[email]["refresh_token"]
+    refresh_token = tokens["refresh_token"]
     
     async with httpx.AsyncClient() as client:
         response = await client.post(
@@ -85,54 +174,73 @@ async def refresh_access_token(email: str):
         
         if response.status_code == 200:
             data = response.json()
-            user_tokens[email]["access_token"] = data.get("access_token")
+            # Save refreshed token (refresh_token stays the same)
+            expires_in = data.get("expires_in", 3600)
+            save_tokens(email, data.get("access_token"), refresh_token, expires_in)
+            logger.info(f"Access token refreshed for {email}")
             return True
+        else:
+            logger.error(f"Failed to refresh token for {email}: {response.status_code} - {response.text}")
+            # If invalid_grant, delete tokens to force re-auth
+            if "invalid_grant" in response.text:
+                delete_tokens(email)
     
     return False
 
 async def get_valid_token(email: str):
-    """Get a valid access token, refreshing if necessary"""
-    if email not in user_tokens or not user_tokens[email].get("access_token"):
+    """Get a valid access token, refreshing if necessary based on expiry timestamp"""
+    tokens = get_stored_tokens(email)
+    
+    if not tokens:
+        logger.info(f"No tokens found for {email}")
         return None
     
-    # Try with current token first
-    access_token = user_tokens[email]["access_token"]
+    # Check if token is expired based on stored timestamp
+    expires_at = tokens["expires_at"]
+    now = datetime.now()
     
-    # Test if token is valid
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            "https://www.googleapis.com/gmail/v1/users/me/profile",
-            headers={"Authorization": f"Bearer {access_token}"}
-        )
-        
-        if response.status_code == 200:
-            return access_token
-        
-        # Token expired, try to refresh
-        if response.status_code == 401:
-            if await refresh_access_token(email):
-                return user_tokens[email]["access_token"]
+    # Add 5 minute buffer before expiry
+    if now >= (expires_at - timedelta(minutes=5)):
+        logger.info(f"Token expired for {email}, refreshing...")
+        if await refresh_access_token(email):
+            # Get updated token
+            tokens = get_stored_tokens(email)
+            return tokens["access_token"] if tokens else None
+        else:
+            logger.error(f"Failed to refresh token for {email}")
+            return None
     
-    return None
+    # Token is still valid
+    return tokens["access_token"]
 
 
 @mcp.tool()
-async def gmail_generate_auth_url(email: str = DEFAULT_USER_EMAIL):
+async def gmail_generate_auth_url(email: str ):
     """
-    Generate Google OAuth 2.0 authentication URL for Gmail. Returns the full URL that the user must visit in their browser.
+    Generate Google OAuth 2.0 authentication URL for Gmail. Only needed for first-time authentication.
     
     Args:
         email: The email address for the user (default: mahdiharoun44@gmail.com)
     
     Returns:
-        str: The complete OAuth URL to visit for authentication
+        dict: Contains auth_url if authentication needed, or status if already authenticated
     """
-    print(f"Generating auth URL for email: {email}")
-    print(f"CLIENT_ID: {'SET' if CLIENT_ID else 'NOT SET'}")
-    print(f"CLIENT_SECRET: {'SET' if CLIENT_SECRET else 'NOT SET'}")
+    logger.info(f"Checking auth status for {email}")
+    
+    # Check if user already has valid tokens
+    tokens = get_stored_tokens(email)
+    if tokens:
+        logger.info(f"User {email} already authenticated")
+        return {
+            "authenticated": True,
+            "email": email,
+            "message": "Already authenticated. No need to re-authenticate."
+        }
+    
+    logger.info(f"Generating auth URL for {email} (first-time authentication)")
     
     if not CLIENT_ID or not CLIENT_SECRET:
-        return "ERROR: Gmail OAuth credentials not configured. Please set GOOGLE_GMAIL_CLIENT_ID and GOOGLE_GMAIL_CLIENT_SECRET in .env file"
+        return {"error": "Gmail OAuth credentials not configured. Please set GOOGLE_GMAIL_CLIENT_ID and GOOGLE_GMAIL_CLIENT_SECRET in .env file"}
     
     base_url = "https://accounts.google.com/o/oauth2/v2/auth"
 
@@ -141,18 +249,22 @@ async def gmail_generate_auth_url(email: str = DEFAULT_USER_EMAIL):
         "redirect_uri": REDIRECT_URI,
         "response_type": "code",
         "access_type": "offline",
-        "prompt": "consent",
         "scope": " ".join(SCOPES),
         "state": email,
         "login_hint": email
     }
+    # Only add prompt=consent for first-time auth (no stored tokens)
+    # This ensures we get a refresh token on first auth
+    if not tokens:
+        params["prompt"] = "consent"
+    
     url = f"{base_url}?{urllib.parse.urlencode(params)}"
-    print(f"Generated URL: {url[:100]}...")
-    return {"auth_url": url}
+    logger.info("Generated URL for first-time auth")
+    return {"auth_url": url, "first_time": True}
 
 
 @mcp.tool()
-async def gmail_check_auth_status(email: str = DEFAULT_USER_EMAIL):
+async def gmail_check_auth_status(email: str ):
     """
     Check if the user is authenticated for Gmail
     
@@ -165,15 +277,16 @@ async def gmail_check_auth_status(email: str = DEFAULT_USER_EMAIL):
     return {"authenticated": False, "email": email, "message": "Use generate_auth_url() to authenticate"}
 
 @mcp.tool()
-async def gmail_revoke_access(email: str = DEFAULT_USER_EMAIL):
+async def gmail_revoke_access(email: str):
     """
     Revoke Gmail authentication for a specific email
     
     Args:
         email: User's email address to revoke (default: mahdiharoun44@gmail.com)
     """
-    if email in user_tokens:
-        access_token = user_tokens[email].get("access_token")
+    tokens = get_stored_tokens(email)
+    if tokens:
+        access_token = tokens.get("access_token")
         if access_token:
             async with httpx.AsyncClient() as client:
                 try:
@@ -181,18 +294,22 @@ async def gmail_revoke_access(email: str = DEFAULT_USER_EMAIL):
                         "https://oauth2.googleapis.com/revoke",
                         params={"token": access_token}
                     )
-                except Exception:
-                    pass
+                    logger.info(f"Revoked access token for {email} at Google")
+                except Exception as e:
+                    logger.warning(f"Failed to revoke at Google: {e}")
         
-        del user_tokens[email]
-        return {"success": True, "message": f"Access revoked for {email}"}
+        # Delete from database
+        if delete_tokens(email):
+            return {"success": True, "message": f"Access revoked for {email}"}
+        else:
+            return {"success": False, "message": f"Failed to delete tokens for {email}"}
     return {"success": False, "message": f"No authentication found for {email}"}
 
 @mcp.custom_route("/oauth2callback", methods=["GET"])
 async def handle_oauth_callback(ctx: Context):
     """Handle the OAuth callback from Google"""
     code = ctx.query_params.get("code")
-    email = ctx.query_params.get("state", DEFAULT_USER_EMAIL)
+    email = ctx.query_params.get("state")
     
     if not code:
         return HTMLResponse("<h1>Error: No authorization code received</h1>", status_code=400)
@@ -212,16 +329,32 @@ async def handle_oauth_callback(ctx: Context):
         
         if response.status_code == 200:
             data = response.json()
-            user_tokens[email] = {
-                "access_token": data.get("access_token"),
-                "refresh_token": data.get("refresh_token")
-            }
-            return HTMLResponse(f"<h1>Success! {email} authenticated for Gmail. You can close this window now.</h1>")
+            access_token = data.get("access_token")
+            refresh_token = data.get("refresh_token")
+            expires_in = data.get("expires_in", 3600)
+            
+            if not refresh_token:
+                logger.error(f"No refresh token received for {email}")
+                return HTMLResponse(
+                    "<h1>Error: No refresh token received. Please revoke access and try again.</h1>",
+                    status_code=400
+                )
+            
+            # Save tokens to database
+            if save_tokens(email, access_token, refresh_token, expires_in):
+                logger.info(f"Tokens saved successfully for {email}")
+                return HTMLResponse(
+                    f"<h1>✅ Success! {email} authenticated for Gmail.</h1>"
+                    f"<p>You can close this window now. You won't need to re-authenticate.</p>"
+                )
+            else:
+                return HTMLResponse("<h1>Error: Failed to save tokens</h1>", status_code=500)
         else:
+            logger.error(f"OAuth error: {response.text}")
             return HTMLResponse(f"<h1>Error: {response.text}</h1>", status_code=400)
 
 @mcp.tool()
-async def list_messages(email: str = DEFAULT_USER_EMAIL, max_results: int = 10, query: str = ""):
+async def list_messages(email: str, max_results: int = 10, query: str = ""):
     """
     List messages from Gmail inbox
     
@@ -276,7 +409,7 @@ async def list_messages(email: str = DEFAULT_USER_EMAIL, max_results: int = 10, 
             return {"error": response.text}
 
 @mcp.tool()
-async def read_message(message_id: str, email: str = DEFAULT_USER_EMAIL):
+async def read_message(message_id: str, email: str):
     """
     Read a specific message from Gmail
     
@@ -326,15 +459,15 @@ async def read_message(message_id: str, email: str = DEFAULT_USER_EMAIL):
             return {"error": response.text}
 
 @mcp.tool()
-async def send_email(to: str, subject: str, body: str, email: str = DEFAULT_USER_EMAIL):
+async def send_email(to: str, subject: str, body: str, email: str ):
     """
     Send an email via Gmail
     
     Args:
         to: Recipient email address
         subject: Email subject
-        body: Email body (plain text)
-        email: Sender's email address (default: mahdiharoun44@gmail.com)
+        body: Email body (plain text) "required"
+        email: Sender's email address 
     """
     access_token = await get_valid_token(email)
     if not access_token:
@@ -377,84 +510,99 @@ async def send_email_with_attachment(
     to: str,
     subject: str,
     body: str,
-    attachment_s3_key: str,
+    attachment_relative_path: str,
     thread_id: str,
-    bucket_name: str = "synapse-openapi-schemas",
-    email: str = DEFAULT_USER_EMAIL
+    email: str = "mahdiharoun44@gmail.com",
 ):
     """
-    Send an email via Gmail with an attachment from S3 (in-memory).
+    Send an email via Gmail with an attachment from the shared Docker volume.
+    
+    Args:
+        to: Recipient email address
+        subject: Email subject
+        body: Email body
+        attachment_relative_path: Path relative to /shared/{thread_id}/ (e.g., 'documents/file.pdf', 'analysis_images/chart.png', 'saved_downloads/file.xlsx')
+        thread_id: Thread ID for locating the file
+        email: Sender's email address (default: mahdiharoun44@gmail.com)
     """
     # Get OAuth token
     access_token = await get_valid_token(email)
     if not access_token:
         return {"error": f"User {email} not authenticated. Use gmail_generate_auth_url() first"}
 
-    # Download attachment from S3 in-memory
-    s3 = boto3.client("s3", region_name="eu-central-1")
-    try:
-        attachment_buffer = io.BytesIO()
-        s3.download_fileobj(bucket_name, attachment_s3_key, attachment_buffer)
-        attachment_buffer.seek(0)
-        filename = os.path.basename(attachment_s3_key)
-    except Exception as e:
-        return {"error": f"Failed to download attachment from S3: {str(e)}"}
+    # Build full path from thread_id and relative path
+    attachment_path = f"/shared/{thread_id}/{attachment_relative_path}"
+    
+    # Extract filename from relative path
+    attachment_name = os.path.basename(attachment_relative_path)
 
-    # Determine content type
-    content_type, _ = mimetypes.guess_type(filename)
+    if not os.path.exists(attachment_path):
+        return {"error": f"Attachment not found at {attachment_path}"}
+
+    # Detect MIME type
+    content_type, _ = mimetypes.guess_type(attachment_path)
     if content_type is None:
         content_type = "application/octet-stream"
     main_type, sub_type = content_type.split("/", 1)
 
-    # Create multipart message
+    # Build email
     message = MIMEMultipart()
     message["to"] = to
     message["from"] = email
     message["subject"] = subject
     message.attach(MIMEText(body, "plain"))
 
-    # Attach S3 file
+    # Attach file from shared volume
     try:
-        if main_type == "text":
-            attachment = MIMEText(attachment_buffer.read().decode("utf-8"), _subtype=sub_type)
-        else:
-            attachment = MIMEBase(main_type, sub_type)
-            attachment.set_payload(attachment_buffer.read())
-            encoders.encode_base64(attachment)
-        attachment.add_header("Content-Disposition", "attachment", filename=filename)
+        with open(attachment_path, "rb") as f:
+            file_data = f.read()
+
+        attachment = MIMEBase(main_type, sub_type)
+        attachment.set_payload(file_data)
+        encoders.encode_base64(attachment)
+
+        attachment.add_header(
+            "Content-Disposition",
+            "attachment",
+            filename=attachment_name
+        )
+
         message.attach(attachment)
+
     except Exception as e:
         return {"error": f"Failed to attach file: {str(e)}"}
 
     # Convert to RFC822
     rfc822_message = message.as_bytes()
 
-    # Send via Gmail simple upload
+    # Send via Gmail API
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://www.googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=media",
             headers={
                 "Authorization": f"Bearer {access_token}",
                 "Content-Type": "message/rfc822",
-                "Content-Length": str(len(rfc822_message)),
             },
             content=rfc822_message
         )
 
-        if response.status_code == 200:
-            result = response.json()
-            return {
-                "success": True,
-                "message_id": result.get("id"),
-                "thread_id": result.get("threadId"),
-                "message": f"Email with attachment '{filename}' sent successfully to {to}"
-            }
-        else:
-            return {"error": f"Failed to send email: {response.status_code} - {response.text}"}
+    if response.status_code == 200:
+        result = response.json()
+        return {
+            "success": True,
+            "message_id": result.get("id"),
+            "thread_id": result.get("threadId"),
+            "message": f"Email with attachment '{attachment_name}' sent successfully to {to}"
+        }
+    else:
+        return {"error": f"Failed to send email: {response.status_code} - {response.text}"}
+
+
+
 
 
 @mcp.tool()
-async def search_messages(search_query: str, email: str = DEFAULT_USER_EMAIL, max_results: int = 20):
+async def search_messages(search_query: str, email: str, max_results: int = 20):
     """
     Search for messages in Gmail using Gmail search syntax
     
@@ -467,7 +615,7 @@ async def search_messages(search_query: str, email: str = DEFAULT_USER_EMAIL, ma
 
 
 @mcp.tool()
-async def list_attachments(message_id: str, email: str = DEFAULT_USER_EMAIL):
+async def list_attachments(message_id: str, email: str):
     """
     List all attachments in a message
     
@@ -515,7 +663,7 @@ async def list_attachments(message_id: str, email: str = DEFAULT_USER_EMAIL):
             return {"error": response.text}
 
 @mcp.tool()
-async def download_attachment(message_id: str, attachment_id: str, save_path: str, email: str = DEFAULT_USER_EMAIL):
+async def download_attachment(message_id: str, attachment_id: str, save_path: str, email: str):
     """
     Download an attachment from a Gmail message
     
@@ -568,5 +716,6 @@ async def download_attachment(message_id: str, attachment_id: str, save_path: st
 
 # Run the server
 if __name__ == "__main__":
+    Base.metadata.create_all(bind=engine)
     mcp.run(transport="sse")
 

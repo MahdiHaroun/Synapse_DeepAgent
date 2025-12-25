@@ -35,6 +35,10 @@
     "scheduler": {
       "url": "http://mcp-scheduler:3070/sse",
       "transport": "sse"
+    },
+    "file-management": {
+      "url": "http://mcp-file-management:3005/sse",
+      "transport": "sse"
     }
   }
 }

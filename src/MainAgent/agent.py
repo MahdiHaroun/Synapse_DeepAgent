@@ -9,12 +9,11 @@ from src.LLMs.OpenAI_LLMs.llms import openai_gpt4_llm
 from src.States.state import DeepAgentState
 from src.MainAgent.tools.todo_tools import write_todos, read_todos , get_current_datetime 
 from src.MainAgent.tools.documents_tools import(
-    create_pdf_file,
-    summarize_file,
+    summarize_faiss_file ,
     search_retrieve_faiss ,
-    list_documents_in_thread
+    list_faiss_files,
 )
-from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS, DOCUMENTS_TOOL_DESCRIPTION  ,  TASK_DESCRIPTION_PREFIX , MEMORY_TOOL_INSTRUCTIONS , URLS_PROTOCOL , SCHADULE_JOBS_INSTRUCTIONS
+from src.Prompts.prompts import  TODO_USAGE_INSTRUCTIONS , WORKFLOW, FAISS_TOOL_DESCRIPTION  ,  TASK_DESCRIPTION_PREFIX , MEMORY_TOOL_INSTRUCTIONS , SCHADULE_JOBS_INSTRUCTIONS
 from langchain.agents import create_agent
 #from langgraph.checkpoint.memory import InMemorySaver 
 from langgraph.checkpoint.mongodb import MongoDBSaver
@@ -63,10 +62,9 @@ class MainAgent:
             get_user_info,
             save_sequence_protocol, search_sequence_protocols,
             get_current_datetime,
-            create_pdf_file,
-            summarize_file,
+            summarize_faiss_file,
             search_retrieve_faiss,
-            list_documents_in_thread
+            list_faiss_files,
 
         ] 
         all_tools = delegation_tools + built_in_tools
@@ -84,15 +82,13 @@ class MainAgent:
         + "\n\n"
         + MEMORY_TOOL_INSTRUCTIONS
         + "\n\n"
-        + URLS_PROTOCOL
+        + FAISS_TOOL_DESCRIPTION
         + "\n\n"
-        + DOCUMENTS_TOOL_DESCRIPTION
-        + "\n\n"
-        + "CRITICAL: You MUST use write_todos tool for ANY user request to create a plan before proceeding.\n"
+        
         + "=" * 80
         + "\n\n"
         + "# SUB-AGENT DELEGATION\n"
-        + GENERAL_INSTRUCTIONS_ABOUT_SPECIFIC_TASKS_WHEN_CALLING_SUB_AGENTS  
+        + WORKFLOW
         + "\n\n"
         + SCHADULE_JOBS_INSTRUCTIONS
         )

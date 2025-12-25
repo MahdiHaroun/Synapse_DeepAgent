@@ -53,19 +53,20 @@ async def add_new_query(collection_name: str, query: str) -> str:
 
 
 @mcp.tool()
-async def add_document_from_file(collection_name: str, file_path: str) -> str:
+async def add_document_from_file(thread_id: str, collection_name: str, file_name: str) -> str:
     """
     Add a new document to MongoDB by reading from a file (PDF, TXT, etc.).
 
     Arguments:
         collection_name (str): The name of the MongoDB collection (e.g., 'rag_db.test').
-        file_path (str): The absolute path to the document file.
+        file_name (str): The name of the document file in the shared uploads directory.
 
     Returns:
         str: Confirmation message with number of chunks added.
     """
     from Synapse_RAG.tools.tools import add_document_to_collection
-    result = await add_document_to_collection(collection_name, file_path)
+    
+    result = await add_document_to_collection(collection_name, thread_id, file_name)
     return result
 
 

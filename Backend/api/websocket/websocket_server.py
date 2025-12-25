@@ -130,7 +130,7 @@ async def handle_client(ws):
                         "message": "Thread not initialized"
                   }))
                     continue
-                context["file_ids"].append(file_id)
+                context["file_ids"] = [file_id]
 
                 await ws.send(json.dumps({
                     "type": "file_added",
@@ -154,7 +154,7 @@ async def handle_client(ws):
                     user_id=context["user_id"],
                     user_name=context["user_name"],
                     message=message,
-                    file_ids=context["file_ids"],
+                    file_ids=context["file_ids"], 
                     show_tools_responses=show_tools_responses
                 ):
                     await ws.send(json.dumps(chunk))

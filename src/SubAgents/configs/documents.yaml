@@ -1,0 +1,11 @@
+- name: document_agent
+  description: Handles Document operations
+  tools:
+  - create_pdf_file
+  - list_files_in_thread
+  - search_files_by_keyword
+
+
+
+
+
