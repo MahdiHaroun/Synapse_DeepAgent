@@ -52,6 +52,7 @@ async def ingest_pdf(
     job_id = str(uuid4())
     file_id = "pdf_" + str(uuid4())
     path = f"/shared/{thread_id}/uploads/{file_id}.pdf"
+    relative_path = f"/uploads/{file_id}.pdf"
 
     # Create directory
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -129,6 +130,7 @@ async def ingest_pdf(
     return {
         "job_id": job_id,
         "file_id": file_id,
+        "relative_path": relative_path,
         "status": "started"
     }
 
@@ -167,6 +169,7 @@ async def image_ingest(
     file_id = "image_" + str(uuid4()) 
     
     path = f"/shared/{thread_id}/uploads/{file_id}.png"
+    relative_path = f"/uploads/{file_id}.png"
     
     # Create directory
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -233,6 +236,7 @@ async def image_ingest(
     return {
         "job_id": job_id,
         "file_id": file_id,
+        "relative_path": relative_path,
         "status": "started"
     }
     

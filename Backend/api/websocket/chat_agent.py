@@ -25,7 +25,7 @@ async def stream_chat(
     user_id: str,
     user_name: str,
     message: str,
-    file_id: str, 
+    file_path: str, 
     show_tools_responses: bool = False
 ):
     """Stream chat responses from the main agent with cancellation support."""
@@ -36,17 +36,19 @@ async def stream_chat(
             user_id=user_id,
             user_name=user_name,
             thread_id=thread_id,
-            file_id=file_id,
+            file_path = file_path
             
         )
         
    
-        if file_id:
-                file_context = "\n\nThe user has uploaded the following file for context:\n" + "\n".join(file_id) 
-                + "the relative path to access the file is /uploads/" + file_id + "\n"
+        if file_path:
+            file_context = (
+                "\n\nThe user has uploaded the following file for context:\n"
+                f"{file_path}\n"
+                f"The realative path to access the file is {file_path}\n"
+            )
         else:
             file_context = ""
-                    
 
         
         # Append file context to user message

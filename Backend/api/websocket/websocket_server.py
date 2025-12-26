@@ -98,7 +98,7 @@ async def handle_client(ws):
             # ===== SET THREAD =====
             elif action == "set_thread":
                 thread_id = data.get("thread_id")
-                file_id = None
+                file_path = None
 
                 if not check_thread_ownership(user_id, thread_id):
                     await ws.send(json.dumps({
@@ -111,7 +111,7 @@ async def handle_client(ws):
                     "thread_id": thread_id,
                     "user_id": str(user_id),  # Convert to string for Context
                     "user_name": user_name,
-                    "file_id": file_id
+                    "file_path": file_path
                 }
 
                 await ws.send(json.dumps({
@@ -121,7 +121,7 @@ async def handle_client(ws):
 
             #===== ADD FILE =====
             elif action == "add_file":
-                file_id = data.get("file_id")
+                file_path = data.get("file_path")
 
                 if not context:
                     await ws.send(json.dumps({
@@ -129,11 +129,11 @@ async def handle_client(ws):
                         "message": "Thread not initialized"
                   }))
                     continue
-                context["file_id"] = [file_id]
+                context["file_path"] = [file_path]
 
                 await ws.send(json.dumps({
                     "type": "file_added",
-                    "file_id": file_id
+                    "file_path": file_path
                 }))
 
             # ===== CHAT =====
@@ -153,7 +153,7 @@ async def handle_client(ws):
                     user_id=context["user_id"],
                     user_name=context["user_name"],
                     message=message,
-                    file_id=context["file_id"], 
+                    file_path=context["file_path"], 
                     show_tools_responses=show_tools_responses
                 ):
                     await ws.send(json.dumps(chunk))

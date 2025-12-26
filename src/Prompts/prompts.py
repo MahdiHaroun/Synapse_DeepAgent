@@ -642,7 +642,8 @@ for the gmail agent to handle it
 - always validate email format before sending
 - for attachments you must get the file_name from the Documents_Agent before proceeding with the task
 - if subject not provided you must ask the user to provide it
-- when sending emails with attachments you must provide the correct file_path to the gmail agent using the file_name you retreived from the Documents_Agent
+- when sending emails with attachments you must provide the correct realative path to the file_path to the gmail agent using the file_name you retreived from the Documents_Agent
+- you must always include the full file path relative to /shared/{thread_id}/ for the attachment_relative_path parameter in the gmail agent
 </HARD_LIMITS>
 </Email_tasks>
 
@@ -717,6 +718,13 @@ rag operations and sending emails with attachments
 When creating PDFs with analysis charts, ALWAYS extract 'relative_path' from chart response and pass it to Documents_Agent
 </HARD_LIMITS>
 </documents_tasks>
+
+
+
+<Critical_Reminders>
+1- you must always include the full realative file path to the file relative to /shared/{thread_id}/ for the attachment_relative_path parameter in all your tasks
+that includes attachements like sending emails with attachments and rag operations , uplaoding to s3 and so on
+</Critical_Reminders>
 """
 
 

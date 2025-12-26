@@ -18,7 +18,7 @@ class Context:
     user_id: str
     user_name: str
     thread_id: str
-    file_id : str
+    file_path : str
     
 
 
